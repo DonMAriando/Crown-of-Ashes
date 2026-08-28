@@ -45,7 +45,7 @@ function initialState(seed,dynasty,mode,meta,house){
     neighbors:{norte:45,sahr:50,ceniza:40},
     personality:{clemencia:0,razon:0},
     flags:[],edicts:[],places:{},
-    persistent:{heirTrait:null,heirPeople:0,spouse:null,children:[]},
+    persistent:{heirTrait:null,heirPeople:0,spouse:null,children:[],assassin:null,plotFace:null,plotsFoiled:0},
     heir:null,guardUsed:false,undoUsed:false,tutorialDone:false,
     relationships:Object.fromEntries(Object.keys(ADVISORS).map(k=>[k,0])),
     history:[],samples:[],recent:[],seen:{},onceSeen:[],delayed:[],forced:[],
@@ -173,6 +173,8 @@ function conditionOK(card){
   if(card.ally&&relOf(card.advisor)<18)return false;
   if(card.foe&&relOf(card.advisor)>-18)return false;
   if(card.season&&SEASON_KEYS[state.season]!==card.season)return false;
+  if(/^plot-(gold|protocol|cipher)-blade/.test(card.id))return false;
+  if((hasFlag('plot_active')||hasFlag('plot_seeded'))&&/^(plague-0|war-0|void-0|famine-0|schism-0|mutiny-0|flood-0|heresy-0|crisis-0)$/.test(card.id))return false;
   if(card.pack&&!card.requires&&!(state.meta.packs||[]).includes(card.pack))return false;
   if(card.tags?.includes('faccion')&&card.weight<=5){
     const map={'noble-ultimatum':'nobleza','clero-ultimatum':'clero','guild-ultimatum':'gremios','border-ultimatum':'frontera'};
@@ -188,7 +190,8 @@ function cardWeight(card){
   const last=state.seen[card.id];if(last==null)w*=1.55;else w*=clamp((state.decision-last)/35,.2,1.25);
   if(state.recent.includes(card.id))w*=.08;
   w*=1+beneficialForNeed(card)*.2;
-  if(card.chain&&state.flags.some(f=>/plague_|war_|void_|famine_|schism_|mutiny_|flood_|heresy_|crisis_|sahr_|wedding_/.test(f)))w*=1.2;
+  if(card.chain&&state.flags.some(f=>/plague_|war_|void_|famine_|schism_|mutiny_|flood_|heresy_|crisis_|sahr_|wedding_|plot_/.test(f)))w*=1.2;
+  if(hasFlag('plot_active')&&card.chain&&/Mesa de Bruno|Firma del protocolo|Correo cifrado/.test(card.chain))w*=2.8;
   const rel=relOf(card.advisor);w*=clamp(1+rel*.015,.65,1.4);
   if(card.season&&SEASON_KEYS[state.season]===card.season)w*=2.2;
   if(state.agendaBias&&ADVISORS[card.advisor]){
@@ -217,6 +220,13 @@ function makeProceduralCard(){
   return C('proc-'+state.decision+'-'+rng.int(1000,9999),advisor,text,O('No esta vez',reject,{placeResent:lugar}),O('Concedido',accept),{tags:['petición','procedural'],weight:7,cooldown:0,place:lugar,work:obra.includes(' ') ? obra.replace(/^un[a]? /,'') : obra});
 }
 function delayedToCard(d){
+  const blade=/^plot_(gold|protocol|cipher)_blade$/.exec(d.type);
+  if(blade){
+    const kind=blade[1];
+    const id=hasFlag('plot_named')?`plot-${kind}-blade-named`:`plot-${kind}-blade`;
+    const c=CARDS.find(x=>x.id===id);
+    if(c)return {...deepClone(c),weight:100,rarity:'consecuencia',cooldown:0,once:false,interrupt:true,years:0};
+  }
   const base=DELAYED[d.type];if(!base)return null;
   return {...deepClone(base),id:'delayed-'+d.type+'-'+d.created,weight:100,rarity:'consecuencia',cooldown:0,once:false,minReign:0,maxReign:999,minDecision:0,maxDecision:999,minAge:0,maxAge:200,years:base.years??1,interrupt:!!base.interrupt,chain:base.chain||''};
 }
@@ -245,7 +255,7 @@ function getNextCard(){
   const ult=maybeUltimatum();if(ult)return ult;
   let candidates=CARDS.filter(conditionOK);
   if(!candidates.length)return makeProceduralCard();
-  const arcActive=state.flags.some(f=>/plague_active|war_active|void_active|famine_active|schism_open|mutiny_on|flood_on|heresy_on|crisis_active/.test(f));
+  const arcActive=state.flags.some(f=>/plague_active|war_active|void_active|famine_active|schism_open|mutiny_on|flood_on|heresy_on|crisis_active|plot_active/.test(f));
   if(rng.chance(arcActive?.07:.14))return makeProceduralCard();
   const selected=rng.weighted(candidates,cardWeight);state.rngCounter=rng.counter;return deepClone(selected);
 }
@@ -300,6 +310,107 @@ function runSpecial(id){
   if(id==='secondChild'){addFlag('segundo_hijo');state.persistent.children=(state.persistent.children||[]).concat([{name:nameFor(rng.chance(.5)?'f':'m')}]);toast('Segunda cuna','La corte ya discute primogenitura.')}
   if(id==='agendaLaw'){state.agendaBias='law';state.lastAgenda=state.decision;toast('Agenda','Inés, Bruno y Elián tendrán más oído.')}
   if(id==='agendaStreet'){state.agendaBias='street';state.lastAgenda=state.decision;toast('Agenda','Tala, Roldán y Lupo tendrán más oído.')}
+  if(id==='plotLook')plotLook();
+  if(id==='plotIgnore')plotIgnore();
+  if(id==='plotClue'){addFlag(hasFlag('plot_clue1')?'plot_clue2':'plot_clue1');state.hidden.inteligencia=clamp(state.hidden.inteligencia+3,-100,150)}
+  if(id==='nameTraitor')nameTraitor();
+  if(id==='betrayKill')betrayKill();
+  if(id==='betrayFoil')betrayFoil();
+  if(id==='shadowPurge'){state.persistent.assassin=null;state.persistent.plotFace=null;['shadow_gold','shadow_protocol','shadow_cipher'].forEach(clearFlag);toast('La mesa se limpia','El oficio del cuchillo no se hereda. Esta vez.')}
+  if(id==='shadowKeep'){state.hidden.corrupcion=clamp(state.hidden.corrupcion+6,-100,150);toast('El copero sigue','La casa prefiere no preguntar de qué murió el anterior.')}
+}
+
+function plotKind(){
+  if(hasFlag('plot_gold')||hasFlag('shadow_gold'))return 'gold';
+  if(hasFlag('plot_protocol')||hasFlag('shadow_protocol'))return 'protocol';
+  if(hasFlag('plot_cipher')||hasFlag('shadow_cipher'))return 'cipher';
+  return state.persistent.assassin?.kind||null;
+}
+function heavyArcActive(){
+  return state.flags.some(f=>/plague_active|war_active|void_active|famine_active|schism_open|mutiny_on|flood_on|heresy_on|crisis_active|plot_active/.test(f));
+}
+function plotCandidates(){
+  const list=[];
+  if(state.hidden.corrupcion>=52||(hasFlag('banco')&&state.hidden.corrupcion>=40)){
+    list.push({kind:'gold',score:state.hidden.corrupcion+(hasFlag('banco')?12:0)+(state.hidden.deuda>20?8:0)});
+  }
+  if(state.hidden.autoridad<=36||(state.factions.nobleza||50)<=34||relOf('ines')<=-10){
+    list.push({kind:'protocol',score:(50-state.hidden.autoridad)+(50-(state.factions.nobleza||50))+Math.max(0,-relOf('ines')*2)});
+  }
+  if(state.hidden.inteligencia<=30||relOf('mara')<=-10||(state.neighbors.norte||50)<=28||((state.hidden.influenciaNorte||0)>=18&&state.hidden.inteligencia<42)){
+    list.push({kind:'cipher',score:(40-state.hidden.inteligencia)+Math.max(0,-relOf('mara')*2)+(50-(state.neighbors.norte||50))+Math.min(20,state.hidden.influenciaNorte||0)});
+  }
+  return list.sort((a,b)=>b.score-a.score);
+}
+function maybeStartPlot(){
+  if(state.reign<2||state.reignDecisions<14||state.rulerAge<24)return;
+  if(hasFlag('plot_seeded')||hasFlag('plot_active')||hasFlag('plot_foiled')||hasFlag('plot_done'))return;
+  if(heavyArcActive())return;
+  const cands=plotCandidates();if(!cands.length)return;
+  const top=cands[0];
+  if(top.score<48&&!rng.chance(.42))return;
+  addFlag('plot_seeded');addFlag('plot_'+top.kind);
+  state.delayed.push({type:'plot_'+top.kind+'_knock',at:state.worldYear+rng.int(1,3),created:state.worldYear,interrupt:true});
+}
+function schedulePlotBlade(soon){
+  const kind=plotKind();if(!kind)return;
+  const after=soon?rng.int(3,6):rng.int(8,13);
+  if(state.delayed.some(d=>String(d.type).includes('plot_')&&String(d.type).includes('_blade')))return;
+  state.delayed.push({type:'plot_'+kind+'_blade',at:state.worldYear+after,created:state.worldYear,interrupt:true});
+}
+function plotLook(){
+  addFlag('plot_looked');addFlag('plot_knock');addFlag('plot_active');
+  state.hidden.inteligencia=clamp(state.hidden.inteligencia+4,-100,150);
+  schedulePlotBlade(false);
+  toast('El cubierto de más','Alguien cuenta copas que no son de cortesía.');
+}
+function plotIgnore(){
+  addFlag('plot_ignore');addFlag('plot_knock');addFlag('plot_active');
+  schedulePlotBlade(true);
+}
+function nameTraitor(){
+  const k=plotKind();
+  if(k==='gold')state.persistent.plotFace=relOf('bruno')<=-8?'Bruno Varda':'Ciro el copero';
+  else if(k==='protocol')state.persistent.plotFace=relOf('ines')<=-8?'Inés de Aramonte':'el duque de la izquierda';
+  else state.persistent.plotFace=relOf('mara')<=-8?'Mara Velo':'un correo del Norte';
+  addFlag('plot_named');addFlag('plot_clue2');
+  toast('Un nombre','Quedó escrito en la palma. No lo leas en voz alta.');
+}
+function assassinRecord(kind){
+  if(kind==='gold')return {kind:'gold',faction:'gremios',advisor:'bruno',neighbor:null};
+  if(kind==='protocol')return {kind:'protocol',faction:'nobleza',advisor:'ines',neighbor:null};
+  return {kind:'cipher',faction:'frontera',advisor:'mara',neighbor:'norte'};
+}
+function betrayKill(){
+  const kind=plotKind()||'gold';
+  addFlag('plot_killed');
+  state.persistent.assassin=assassinRecord(kind);
+}
+function betrayFoil(){
+  const kind=plotKind()||'gold';
+  const named=hasFlag('plot_named');
+  addFlag('plot_foiled');addFlag('plot_done');
+  ['plot_active','plot_gold','plot_protocol','plot_cipher','plot_seeded'].forEach(clearFlag);
+  state.delayed=state.delayed.filter(d=>!String(d.type).startsWith('plot_'));
+  state.persistent.assassin=null;
+  state.persistent.plotsFoiled=(state.persistent.plotsFoiled||0)+1;
+  if(kind==='gold'){state.hidden.corrupcion=clamp(state.hidden.corrupcion-(named?18:8),-100,150);state.factions.gremios=clamp((state.factions.gremios||50)-(named?8:3),0,100)}
+  if(kind==='protocol'){state.hidden.autoridad=clamp(state.hidden.autoridad+(named?10:4),-100,150);state.factions.nobleza=clamp((state.factions.nobleza||50)-(named?10:4),0,100)}
+  if(kind==='cipher'){state.hidden.inteligencia=clamp(state.hidden.inteligencia+(named?10:4),-100,150);state.neighbors.norte=clamp((state.neighbors.norte||50)-(named?8:3),0,100)}
+  if(named){
+    const edict={gold:'El copero juzgado',protocol:'El protocolo del banquete',cipher:'El correo abierto'}[kind];
+    const secret={gold:'Quién mezclaba metal en el vino',protocol:'La cláusula que era un cuchillo',cipher:'La letra del Norte en palacio'}[kind];
+    addEdict(edict);addSecret(secret);
+    toast('La daga no alcanzó',`${state.persistent.plotFace||'El traidor'} pierde el oficio. Vos, no.`);
+  }else{
+    addEdict('La copa retirada');
+    toast('Suerte de palacio','La copa no se bebió. El nombre sigue suelto en los pasillos.');
+  }
+}
+function substPlot(s){return String(s||'').replace(/\{traidor\}/g,state.persistent.plotFace||'el traidor')}
+function checkBetrayalDeath(){
+  if(!hasFlag('plot_killed'))return false;
+  endReign('betrayal',false);return true;
 }
 
 function scheduleWorldEvents(){
@@ -315,6 +426,7 @@ function scheduleWorldEvents(){
   for(const k of FACTION_KEYS){if(state.factions[k]<25&&rng.chance(.05))state.stats.pueblo=clamp(state.stats.pueblo-1,0,100)}
   if(state.neighbors.norte<20&&rng.chance(.06))state.stats.ejercito=clamp(state.stats.ejercito-2,0,100);
   if(state.heir&&rng.chance(.08))state.heir.age+=1;
+  maybeStartPlot();
 }
 function updateHiddenMilestones(){
   if(state.stats.tesoro<10)state.hidden.treasuryLowSeen=true;
@@ -328,6 +440,7 @@ function checkSecrets(){
   if(hasFlag('constitucion'))addSecret('El trono puede sobrevivir al poder');
   if(hasFlag('schism_healed'))addSecret('Un reino puede tener dos cielos');
   if(hasFlag('famine_mercy'))addSecret('El Sur cuenta, pero a veces perdona');
+  if(hasFlag('plot_named')&&hasFlag('plot_foiled'))addSecret('La palma donde cupo un nombre');
 }
 function checkAchievements(){for(const [id,title,desc,icon,test] of ACHIEVEMENTS){if(!state.meta.achievements.includes(id)&&test(state)){state.meta.achievements.push(id);state.meta.legacy+=5;toast(`Logro: ${title}`,`${desc}  +5 ✧`)}}}
 function checkSpecialEnding(){
@@ -384,7 +497,7 @@ function choose(side,opts={}){
   animateChoice(side,()=>{
     try{
       renderStats();renderHeader();
-      if(checkDeath()||checkAgeDeath()||checkSpecialEnding())return;
+      if(checkDeath()||checkAgeDeath()||checkBetrayalDeath()||checkSpecialEnding())return;
       dealCard();
     }finally{state.busy=false}
   });
@@ -424,18 +537,20 @@ function rumorOfDead(){
 }
 function endReign(stat,high){
   state.meta.totalReigns++;state.meta.bestReign=Math.max(state.meta.bestReign,state.reignYear);
-  const key=stat==='age'?'age':stat+(high?'High':'Low');
+  const key=stat==='betrayal'?'betrayal':stat==='age'?'age':stat+(high?'High':'Low');
   state.meta.lifetimeDeaths[key]=(state.meta.lifetimeDeaths[key]||0)+1;
   const earned=Math.max(1,Math.floor(state.reignYear/8)+Math.floor(state.reignDecisions/18));
   state.meta.legacy+=earned;localStorage.setItem(META_KEY,JSON.stringify(state.meta));
-  const txt=stat==='age'?rng.pick(deathReasons.age):rng.pick(deathReasons[key]);
-  $('#deathTitle').textContent=stat==='age'?'El cuerpo cedió':`${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
+  checkAchievements();
+  const kind=plotKind();
+  const txt=stat==='betrayal'?rng.pick(deathReasons['betrayal_'+(kind||'gold')]||deathReasons.betrayal):stat==='age'?rng.pick(deathReasons.age):rng.pick(deathReasons[key]);
+  $('#deathTitle').textContent=stat==='betrayal'?'La daga encontró el oficio':stat==='age'?'El cuerpo cedió':`${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
   $('#deathText').textContent=txt;
-  $('#deathMemory').textContent=rumorOfDead();
+  $('#deathMemory').textContent=stat==='betrayal'?(state.persistent.plotFace?`${state.persistent.plotFace} sigue comiendo en palacio. El heredero heredará esa silla.`:rumorOfDead()):rumorOfDead();
   $('#deathYears').textContent=state.reignYear;
   $('#deathAge').textContent=Math.round(state.rulerAge);
   $('#deathLegacy').textContent='+'+earned;
-  $('#deathIcon').textContent=stat==='age'?'⌛':STAT_ICONS[stat];
+  $('#deathIcon').textContent=stat==='betrayal'?'🗡':stat==='age'?'⌛':STAT_ICONS[stat];
   const works=state.edicts.slice(-6).map(e=>`<div class="unlock">Sobrevió: ${escapeHtml(e.name)}</div>`).join('')||'<div class="unlock">Ninguna obra nombrada sobrevive con claridad.</div>';
   $('#deathEdicts').innerHTML=works;
   ensureHeir(true);
@@ -465,23 +580,33 @@ function inheritKingdom(){
   state.hidden.autoridad=clamp(state.hidden.autoridad,25,75);
   state.hidden.salud=clamp(state.hidden.salud,35,85);
   state.hidden.balanceStreak=0;state.hidden.treasuryLowSeen=false;
+  const a=state.persistent.assassin;
+  if(a){
+    if(a.faction)state.factions[a.faction]=clamp((state.factions[a.faction]||50)-14,8,90);
+    if(a.advisor)state.relationships[a.advisor]=Math.min(state.relationships[a.advisor]||0,-8);
+    if(a.neighbor)state.neighbors[a.neighbor]=clamp((state.neighbors[a.neighbor]||50)-10,8,90);
+    state.hidden.inteligencia=clamp(state.hidden.inteligencia+6,-100,150);
+  }
 }
 function nextReign(){
   $('#deathDialog').close();
   const heir=ensureHeir(true);
   state.reign++;state.reignYear=1;state.reignDecisions=0;state.guardUsed=false;state.undoUsed=false;state.snapshot=null;state.consulted=false;
   inheritKingdom();applyStartPerks();
+  const killer=state.persistent.assassin;
+  state.flags=state.flags.filter(f=>!/^plot_/.test(f));
+  if(killer?.kind)addFlag('shadow_'+killer.kind);
   setRuler(true);
-  state.heir=null;state.currentCard=null;
+  state.heir=null;state.currentCard=null;state.busy=false;
   if((state.meta.perks||[]).includes('primogenitura'))ensureHeir(true);
   checkAchievements();saveAll();renderAll();dealCard();
-  toast('Nueva corona',`${state.ruler} hereda un reino que recuerda.`);
+  toast('Nueva corona',killer?`${state.ruler} hereda un reino… y al que sirvió el vino.`:`${state.ruler} hereda un reino que recuerda.`);
 }
 
 function cardTextOf(c){
   let t=c.text||'';
   if(c.coda){for(const [flag,extra] of Object.entries(c.coda)){if(hasFlag(flag))t+=extra}}
-  return t;
+  return substPlot(t);
 }
 function dealCard(){state.currentCard=getNextCard();state.consulted=false;state.rngCounter=rng.counter;saveAll();renderCard()}
 function renderCard(){
@@ -496,7 +621,7 @@ function renderCard(){
   el.portraitGlyph.innerHTML='<i class="sil-head"></i><i class="sil-body"></i>';
   el.cardTag.textContent=(c.tags?.[0]||'CORTE').toUpperCase();
   el.rarityTag.textContent=String(c.rarity||'común').toUpperCase();
-  const left=flexLabel(c.left.label,'left'),right=flexLabel(c.right.label,'right');
+  const left=substPlot(flexLabel(c.left.label,'left')),right=substPlot(flexLabel(c.right.label,'right'));
   el.leftText.textContent=left;el.rightText.textContent=right;el.leftBtnText.textContent=left;el.rightBtnText.textContent=right;
   el.swipeLeftText.textContent=left;el.swipeRightText.textContent=right;
   el.leftEffects.textContent=effectPreview(c.left);el.rightEffects.textContent=effectPreview(c.right);
@@ -513,7 +638,8 @@ function flexLabel(label,side){
   return label;
 }
 function canUseConsult(c){
-  if(!c||c.interrupt||c.tutorial||c.rarity==='legendaria')return false;
+  if(!c||c.tutorial)return false;
+  if((c.interrupt||c.rarity==='legendaria')&&!c.consult)return false;
   if((state.meta.perks||[]).includes('consejo'))return !state.consulted;
   return !state.consulted&&(state.worldYear-state.lastConsult>=4);
 }
@@ -522,7 +648,7 @@ function consultCouncil(){
   state.consulted=true;state.lastConsult=state.worldYear;
   const a=ADVISORS[c.advisor];
   const line=c.consult||`${a?.name||'El Consejo'} murmura: izquierda ${effectPreview(c.left,true) || 'casi nada'}; derecha ${effectPreview(c.right,true)||'casi nada'}.`;
-  el.consultHint.textContent=line;
+  el.consultHint.textContent=substPlot(line);
   el.leftEffects.textContent=effectPreview(c.left,true);
   el.rightEffects.textContent=effectPreview(c.right,true);
   el.consultBtn.disabled=true;
@@ -562,6 +688,9 @@ function renderOmens(){
   if(hasFlag('famine_active'))arr.push(['♟ Hambruna','urgent']);
   if(hasFlag('flood_on')||hasFlag('flood_active'))arr.push(['Las Marismas','urgent']);
   if(hasFlag('mutiny_on'))arr.push(['Motín','urgent']);
+  if(hasFlag('plot_active'))arr.push([hasFlag('plot_named')?'🗡 El nombre está en la mesa':'🗡 Conspiración','urgent']);
+  else if(hasFlag('plot_seeded'))arr.push(['Un cubierto de más','']);
+  if(hasFlag('shadow_gold')||hasFlag('shadow_protocol')||hasFlag('shadow_cipher'))arr.push(['El copero de ayer','']);
   if(state.hidden.corrupcion>55)arr.push(['◐ Corrupción','']);
   if(state.hidden.salud<35)arr.push(['Salud frágil','']);
   if(state.delayed.length)arr.push([`⌛ ${state.delayed.length} pendientes`,'']);
