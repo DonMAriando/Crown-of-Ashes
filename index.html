@@ -4,10 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0c0c12" />
+  <meta name="description" content="Goberná Valdoria a través de generaciones. Cada decisión deja una cicatriz; cada muerte, una herencia." />
   <title>Corona de Ceniza — Decisiones de una Dinastía</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
 </head>
 <body>
+  <div class="kingdom-bg" id="kingdomBg" aria-hidden="true"></div>
   <div id="app" class="app">
     <header class="topbar">
       <button id="brandBtn" class="brand" aria-label="Abrir menú">
@@ -17,19 +22,42 @@
       <div class="year-wrap">
         <span id="rulerName">—</span>
         <strong id="yearLabel">Año 1</strong>
+        <em id="ageLabel" class="age-label"></em>
       </div>
-      <button id="menuBtn" class="icon-btn" aria-label="Menú">☰</button>
+      <div class="top-actions">
+        <span id="seasonLabel" class="season-chip" title="Estación">Primavera</span>
+        <button id="helpBtn" class="icon-btn" aria-label="Ayuda">?</button>
+        <button id="menuBtn" class="icon-btn" aria-label="Menú">☰</button>
+      </div>
     </header>
 
     <section class="stats" aria-label="Estado del reino">
-      <div class="stat" data-stat="pueblo"><div class="stat-head"><span>♟</span><b>Pueblo</b><em id="puebloText">50</em></div><div class="meter"><i id="puebloBar"></i></div></div>
-      <div class="stat" data-stat="tesoro"><div class="stat-head"><span>◆</span><b>Tesoro</b><em id="tesoroText">50</em></div><div class="meter"><i id="tesoroBar"></i></div></div>
-      <div class="stat" data-stat="ejercito"><div class="stat-head"><span>⚔</span><b>Ejército</b><em id="ejercitoText">50</em></div><div class="meter"><i id="ejercitoBar"></i></div></div>
-      <div class="stat" data-stat="saber"><div class="stat-head"><span>✦</span><b>Saber</b><em id="saberText">50</em></div><div class="meter"><i id="saberBar"></i></div></div>
+      <button class="stat" data-stat="pueblo" id="statPueblo" aria-describedby="tip-pueblo">
+        <div class="stat-head"><span>♟</span><b>Pueblo</b><em id="puebloText">50</em></div>
+        <div class="meter"><i id="puebloBar"></i></div>
+        <span class="stat-tip" id="tip-pueblo" role="tooltip">Si llega a 0, una revuelta te arrastra. Si llega a 100, te vuelven innecesario.</span>
+      </button>
+      <button class="stat" data-stat="tesoro" id="statTesoro" aria-describedby="tip-tesoro">
+        <div class="stat-head"><span>◆</span><b>Tesoro</b><em id="tesoroText">50</em></div>
+        <div class="meter"><i id="tesoroBar"></i></div>
+        <span class="stat-tip" id="tip-tesoro" role="tooltip">Si llega a 0, la Corona quiebra. Si llega a 100, el oro te encierra.</span>
+      </button>
+      <button class="stat" data-stat="ejercito" id="statEjercito" aria-describedby="tip-ejercito">
+        <div class="stat-head"><span>⚔</span><b>Ejército</b><em id="ejercitoText">50</em></div>
+        <div class="meter"><i id="ejercitoBar"></i></div>
+        <span class="stat-tip" id="tip-ejercito" role="tooltip">Si llega a 0, te invaden. Si llega a 100, tus generales te reemplazan.</span>
+      </button>
+      <button class="stat" data-stat="saber" id="statSaber" aria-describedby="tip-saber">
+        <div class="stat-head"><span>✦</span><b>Saber</b><em id="saberText">50</em></div>
+        <div class="meter"><i id="saberBar"></i></div>
+        <span class="stat-tip" id="tip-saber" role="tooltip">Si llega a 0, la superstición te señala. Si llega a 100, los sabios te declaran hipótesis.</span>
+      </button>
     </section>
+    <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
     <main class="game-stage">
       <div class="omens" id="omens"></div>
+      <p class="whisper" id="whisper" aria-live="polite"></p>
       <div class="choice-preview left" id="leftPreview"><span>←</span><b id="leftText">No</b><small id="leftEffects"></small></div>
       <div class="choice-preview right" id="rightPreview"><b id="rightText">Sí</b><span>→</span><small id="rightEffects"></small></div>
 
@@ -37,22 +65,27 @@
         <div class="ghost-card back-2"></div>
         <div class="ghost-card back-1"></div>
         <article class="card" id="card" tabindex="0" aria-live="polite">
+          <div class="swipe-label left" id="swipeLeft"><b id="swipeLeftText">Rechazar</b></div>
+          <div class="swipe-label right" id="swipeRight"><b id="swipeRightText">Aceptar</b></div>
           <div class="card-topline"><span id="cardTag">CORTE</span><span id="rarityTag">COMÚN</span></div>
-          <div class="portrait" id="portrait"><div id="portraitGlyph">♛</div><span id="advisorMood"></span></div>
+          <div class="portrait" id="portrait"><div class="sil" id="portraitGlyph"></div><span id="advisorMood"></span></div>
           <div class="speaker"><strong id="speakerName">Consejera</strong><small id="speakerTitle">del reino</small></div>
           <p id="cardText">Cargando el destino…</p>
+          <div class="echo" id="cardEcho"></div>
           <div class="card-footer"><span id="chainHint"></span><span class="drag-hint">Arrastrá o usá ← →</span></div>
         </article>
       </div>
 
       <div class="desktop-actions">
         <button id="leftBtn" class="choice-btn no"><span>←</span><b id="leftBtnText">Rechazar</b></button>
+        <button id="consultBtn" class="consult-btn" title="Consultar al Consejo (no disponible en crisis)">Consejo</button>
         <button id="rightBtn" class="choice-btn yes"><b id="rightBtnText">Aceptar</b><span>→</span></button>
       </div>
+      <p class="consult-hint" id="consultHint"></p>
     </main>
 
     <footer class="footer">
-      <button id="chronicleBtn">▤ Crónica <span id="chronicleCount">0</span></button>
+      <button id="chronicleBtn">▤ Anales <span id="chronicleCount">0</span></button>
       <div class="legacy-chip" title="Legado dinástico"><span>✧</span><b id="legacyValue">0</b></div>
       <button id="codexBtn">⌘ Códice</button>
     </footer>
@@ -67,17 +100,31 @@
       <h1>Corona de Ceniza</h1>
       <p class="lead">Goberná Valdoria a través de generaciones. Cada decisión deja una cicatriz; cada muerte, una herencia.</p>
       <div class="feature-grid">
-        <div><b>∞</b><span>Eventos combinatorios y RNG adaptativo</span></div>
-        <div><b>⌛</b><span>Consecuencias diferidas durante años</span></div>
-        <div><b>◇</b><span>Secretos y arcos que cruzan reinados</span></div>
-        <div><b>✧</b><span>Legado, logros y desbloqueos persistentes</span></div>
+        <div><b>∞</b><span>El reino recuerda obras, rencores y pactos</span></div>
+        <div><b>⌛</b><span>Consecuencias diferidas, estaciones y edad</span></div>
+        <div><b>◇</b><span>Arcos, vecinos y una corte con voluntad</span></div>
+        <div><b>✧</b><span>Legado, finales que sellan y desbloqueos</span></div>
       </div>
       <label class="field">Nombre de la dinastía<input id="dynastyInput" maxlength="22" placeholder="Ej. de Valdoria" /></label>
+      <label class="field">Nombre del fundador o fundadora<input id="founderInput" maxlength="22" placeholder="Ej. Aldo el Gris" /></label>
+      <label class="field">Lema de la casa<input id="mottoInput" maxlength="48" placeholder="Ej. Ceniza no es olvido" /></label>
+      <div class="field-row">
+        <label class="field">Color del estandarte<input id="colorInput" type="color" value="#c6a45b" /></label>
+        <label class="field">Primer soberano<select id="genderSelect"><option value="auto">Que lo decida el destino</option><option value="f">Soberana</option><option value="m">Soberano</option></select></label>
+      </div>
       <label class="field">Semilla del mundo <span>(opcional)</span><input id="seedInput" maxlength="28" placeholder="vacío = aleatoria" /></label>
-      <label class="field">Modo<select id="modeSelect"><option value="normal">Crónica — experiencia equilibrada</option><option value="relaxed">Consejo Real — más indulgente</option><option value="harsh">Corona de Hierro — consecuencias severas</option><option value="chaos">Oráculo Roto — RNG salvaje</option></select></label>
+      <label class="field">Modo
+        <select id="modeSelect">
+          <option value="normal">Crónica — equilibrada (sin deshacer)</option>
+          <option value="relaxed">Consejo Real — efectos −18%, un deshacer por reinado</option>
+          <option value="harsh">Corona de Hierro — efectos +18%, confirma si la carta mata</option>
+          <option value="chaos">Oráculo Roto — pesos salvajes y magnitudes inestables</option>
+        </select>
+      </label>
       <button id="startBtn" class="primary">Fundar la dinastía</button>
+      <button id="dailyBtn" class="secondary">Desafío del día</button>
       <button id="continueBtn" class="secondary hidden">Continuar partida guardada</button>
-      <p class="tiny">La partida se guarda automáticamente en este navegador.</p>
+      <p class="tiny">La partida se guarda en este navegador. Podés instalarla como aplicación.</p>
     </div>
   </dialog>
 
@@ -85,6 +132,7 @@
     <div class="modal-head"><div><p class="eyebrow">CORONA DE CENIZA</p><h2>Consejo privado</h2></div><button class="close-btn" data-close="menuDialog">×</button></div>
     <div class="menu-list">
       <button id="resumeBtn"><span>▶</span><div><b>Continuar</b><small>Volver al trono</small></div></button>
+      <button id="undoBtn"><span>↶</span><div><b>Deshacer última carta</b><small>Una vez por reinado en Consejo Real</small></div></button>
       <button id="saveBtn"><span>▣</span><div><b>Guardar</b><small>Forzar guardado local</small></div></button>
       <button id="exportBtn"><span>⇩</span><div><b>Exportar partida</b><small>Descargar un archivo JSON</small></div></button>
       <button id="importBtn"><span>⇧</span><div><b>Importar partida</b><small>Cargar un archivo JSON</small></div></button>
@@ -93,19 +141,49 @@
     </div>
     <div class="settings-box">
       <label><span>Sonido</span><input id="soundToggle" type="checkbox" checked /></label>
+      <label><span>Música de corte</span><input id="musicToggle" type="checkbox" checked /></label>
       <label><span>Mostrar magnitud aproximada</span><input id="hintToggle" type="checkbox" checked /></label>
+      <label><span>Reducir movimiento</span><input id="motionToggle" type="checkbox" /></label>
       <div class="seed-readout"><span>Semilla</span><code id="seedReadout">—</code></div>
     </div>
   </dialog>
 
+  <dialog id="helpDialog" class="modal wide-modal">
+    <div class="modal-head"><div><p class="eyebrow">OFICIO DE REINAR</p><h2>Cómo se sostiene la corona</h2></div><button class="close-btn" data-close="helpDialog">×</button></div>
+    <div class="help-body">
+      <p>Arrastrá la carta, usá los botones o las flechas ← →. Cada decisión mueve cuatro pilares. Si uno toca <b>0</b> o <b>100</b>, el reinado termina.</p>
+      <ul>
+        <li><b>Pueblo</b> — lealtad de plazas y aldeas. El amor extremo también destituye.</li>
+        <li><b>Tesoro</b> — moneda, crédito y graneros. Demasiado oro crea un poder paralelo.</li>
+        <li><b>Ejército</b> — cuarteles y fronteras. Un ejército demasiado fiel a sí mismo no lo es a vos.</li>
+        <li><b>Saber</b> — escuelas, archivos, ritos. La ignorancia lincha; el exceso calcula tu irrelevancia.</li>
+      </ul>
+      <p>Los consejeros tienen humor. Si los maltratás, dejan de ser decorado. Las obras que construyas sobreviven a tu muerte. El tiempo no es siempre un año: algunas cartas duran una noche.</p>
+      <p>Atajos: <kbd>←</kbd> <kbd>→</kbd> decidir · <kbd>?</kbd> esta ayuda · <kbd>Z</kbd> deshacer (si el modo lo permite).</p>
+    </div>
+  </dialog>
+
   <dialog id="chronicleDialog" class="modal wide-modal">
-    <div class="modal-head"><div><p class="eyebrow">MEMORIA DEL REINO</p><h2>Crónica</h2></div><button class="close-btn" data-close="chronicleDialog">×</button></div>
+    <div class="modal-head"><div><p class="eyebrow">MEMORIA DEL REINO</p><h2>Anales</h2></div>
+      <div class="head-actions">
+        <button id="exportBookBtn" class="text-btn">Exportar libro</button>
+        <button class="close-btn" data-close="chronicleDialog">×</button>
+      </div>
+    </div>
     <div id="chronicleList" class="chronicle-list"></div>
   </dialog>
 
   <dialog id="codexDialog" class="modal wide-modal">
     <div class="modal-head"><div><p class="eyebrow">PROGRESO DINÁSTICO</p><h2>Códice</h2></div><button class="close-btn" data-close="codexDialog">×</button></div>
-    <div class="tabs"><button class="tab active" data-tab="achievements">Logros</button><button class="tab" data-tab="legacy">Legado</button><button class="tab" data-tab="advisors">Consejeros</button><button class="tab" data-tab="secrets">Secretos</button><button class="tab" data-tab="stats">Estadísticas</button></div>
+    <div class="tabs">
+      <button class="tab active" data-tab="achievements">Logros</button>
+      <button class="tab" data-tab="legacy">Legado</button>
+      <button class="tab" data-tab="advisors">Consejeros</button>
+      <button class="tab" data-tab="edicts">Edictos</button>
+      <button class="tab" data-tab="map">Mapa</button>
+      <button class="tab" data-tab="secrets">Secretos</button>
+      <button class="tab" data-tab="stats">Estadísticas</button>
+    </div>
     <div id="codexContent" class="codex-content"></div>
   </dialog>
 
@@ -115,16 +193,56 @@
       <div class="death-icon" id="deathIcon">♚</div>
       <h2 id="deathTitle">La corona cae</h2>
       <p id="deathText" class="lead"></p>
-      <div class="death-stats"><div><span>Años</span><b id="deathYears">0</b></div><div><span>Decisiones</span><b id="deathDecisions">0</b></div><div><span>Legado ganado</span><b id="deathLegacy">0</b></div></div>
+      <p id="deathMemory" class="memory"></p>
+      <div class="death-stats">
+        <div><span>Años</span><b id="deathYears">0</b></div>
+        <div><span>Edad</span><b id="deathAge">0</b></div>
+        <div><span>Legado</span><b id="deathLegacy">0</b></div>
+      </div>
+      <div id="deathEdicts" class="unlock-list"></div>
+      <div id="deathHeir" class="heir-card"></div>
       <div id="deathUnlocks" class="unlock-list"></div>
       <button id="nextReignBtn" class="primary">Coronar al heredero</button>
     </div>
   </dialog>
 
-  <dialog id="endingDialog" class="modal start-modal">
-    <div class="modal-scroll"><div class="sigil">✦</div><p class="eyebrow">DESTINO DE VALDORIA</p><h2 id="endingTitle">Final</h2><p id="endingText" class="lead"></p><div id="endingSummary" class="ending-summary"></div><button id="endingContinueBtn" class="primary">Seguir jugando en modo Crónica</button></div>
+  <dialog id="confirmDialog" class="modal side-modal">
+    <div class="modal-head"><div><p class="eyebrow">CORONA DE HIERRO</p><h2>Esta carta puede matarte</h2></div><button class="close-btn" data-close="confirmDialog">×</button></div>
+    <div class="confirm-body">
+      <p id="confirmText" class="lead">Un pilar llegaría al extremo.</p>
+      <div class="desktop-actions">
+        <button id="confirmNo" class="choice-btn no"><b>Mejor no</b></button>
+        <button id="confirmYes" class="choice-btn yes"><b>Acepto el riesgo</b></button>
+      </div>
+    </div>
   </dialog>
 
+  <dialog id="endingDialog" class="modal start-modal">
+    <div class="modal-scroll">
+      <div class="sigil">✦</div>
+      <p class="eyebrow">DESTINO DE VALDORIA</p>
+      <h2 id="endingTitle">Final</h2>
+      <p id="endingText" class="lead"></p>
+      <div id="endingSummary" class="ending-summary"></div>
+      <button id="endingSealBtn" class="primary">Sellar la crónica</button>
+      <button id="endingContinueBtn" class="secondary">Seguir en modo eco</button>
+    </div>
+  </dialog>
+
+  <dialog id="sealedDialog" class="modal start-modal">
+    <div class="modal-scroll">
+      <div class="sigil">✧</div>
+      <p class="eyebrow">LIBRO CERRADO</p>
+      <h2>La dinastía queda escrita</h2>
+      <p id="sealedText" class="lead"></p>
+      <button id="sealedExportBtn" class="primary">Descargar el libro</button>
+      <button id="sealedNewBtn" class="secondary">Fundar otra casa</button>
+    </div>
+  </dialog>
+
+  <script src="content.js"></script>
+  <script src="cards-core.js"></script>
+  <script src="cards-arcs.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
