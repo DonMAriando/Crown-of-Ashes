@@ -1,0 +1,13 @@
+{
+  "name": "Corona de Ceniza",
+  "short_name": "Ceniza",
+  "description": "Goberná Valdoria a través de generaciones. Cada decisión deja una cicatriz.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0b11",
+  "theme_color": "#0c0c12",
+  "lang": "es-AR",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
