@@ -6,6 +6,9 @@
   <meta name="theme-color" content="#0c0c12" />
   <meta name="description" content="Goberná Valdoria a través de generaciones. Cada decisión deja una cicatriz; cada muerte, una herencia." />
   <title>Corona de Ceniza — Decisiones de una Dinastía</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;600;700&display=swap" />
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
@@ -68,7 +71,7 @@
           <div class="swipe-label left" id="swipeLeft"><b id="swipeLeftText">Rechazar</b></div>
           <div class="swipe-label right" id="swipeRight"><b id="swipeRightText">Aceptar</b></div>
           <div class="card-topline"><span id="cardTag">CORTE</span><span id="rarityTag">COMÚN</span></div>
-          <div class="portrait" id="portrait"><div class="sil" id="portraitGlyph"></div><span id="advisorMood"></span></div>
+          <div class="portrait" id="portrait"><img id="portraitImg" alt="" /><div class="sil" id="portraitGlyph"></div><span id="advisorMood"></span></div>
           <div class="speaker"><strong id="speakerName">Consejera</strong><small id="speakerTitle">del reino</small></div>
           <p id="cardText">Cargando el destino…</p>
           <div class="echo" id="cardEcho"></div>
@@ -105,6 +108,9 @@
         <div><b>◇</b><span>Arcos, vecinos y una corte con voluntad</span></div>
         <div><b>✧</b><span>Legado, finales que sellan y desbloqueos</span></div>
       </div>
+      <button id="continueBtn" class="primary hidden">La crónica sigue</button>
+      <button id="showFoundBtn" class="secondary hidden">Fundar otra dinastía</button>
+      <div id="foundFields">
       <label class="field">Nombre de la dinastía<input id="dynastyInput" maxlength="22" placeholder="Ej. de Valdoria" /></label>
       <label class="field">Nombre del fundador o fundadora<input id="founderInput" maxlength="22" placeholder="Ej. Aldo el Gris" /></label>
       <label class="field">Lema de la casa<input id="mottoInput" maxlength="48" placeholder="Ej. Ceniza no es olvido" /></label>
@@ -123,7 +129,7 @@
       </label>
       <button id="startBtn" class="primary">Fundar la dinastía</button>
       <button id="dailyBtn" class="secondary">Desafío del día</button>
-      <button id="continueBtn" class="secondary hidden">Continuar partida guardada</button>
+      </div>
       <p class="tiny">La partida se guarda en este navegador. Podés instalarla como aplicación.</p>
     </div>
   </dialog>
@@ -191,7 +197,7 @@
   <dialog id="deathDialog" class="modal death-modal">
     <div class="modal-scroll">
       <p class="eyebrow">EL REINADO HA TERMINADO</p>
-      <div class="death-icon" id="deathIcon">♚</div>
+      <figure class="death-art"><img id="deathArt" alt="" /><div class="death-icon" id="deathIcon">♚</div></figure>
       <h2 id="deathTitle">La corona cae</h2>
       <p id="deathText" class="lead"></p>
       <p id="deathMemory" class="memory"></p>
@@ -244,6 +250,7 @@
   <script src="content.js"></script>
   <script src="cards-core.js"></script>
   <script src="cards-arcs.js"></script>
+  <script src="audio.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

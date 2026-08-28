@@ -15,7 +15,7 @@ function C(id,advisor,text,left,right,opt={}){
 }
 function O(label,effects={},extra={}){return {label,effects,...extra}}
 
-const VERSION='2.1.0';
+const VERSION='2.2.0';
 const STAT_KEYS=['pueblo','tesoro','ejercito','saber'];
 const STAT_LABELS={pueblo:'Pueblo',tesoro:'Tesoro',ejercito:'Ejército',saber:'Saber'};
 const STAT_ICONS={pueblo:'♟',tesoro:'◆',ejercito:'⚔',saber:'✦'};
@@ -33,18 +33,18 @@ const SEASON_NAMES=['Primavera','Verano','Otoño','Invierno'];
 const SEASON_KEYS=['spring','summer','autumn','winter'];
 
 const ADVISORS={
-  ines:{name:'Inés de Aramonte',title:'Cancillera de la Corona',glyph:'♛',mood:'◈',sil:'ines'},
-  bruno:{name:'Bruno Varda',title:'Tesorero Real',glyph:'♜',mood:'◆',sil:'bruno'},
-  tala:{name:'Tala',title:'Voz de los Barrios',glyph:'♟',mood:'❖',sil:'tala'},
-  roldan:{name:'Roldán Hierro',title:'Mariscal de Valdoria',glyph:'⚔',mood:'✣',sil:'roldan'},
-  elian:{name:'Elián de los Nueve',title:'Archivero Mayor',glyph:'✦',mood:'⌘',sil:'elian'},
-  mara:{name:'Mara Velo',title:'Maestra de Espías',glyph:'◐',mood:'♠',sil:'mara'},
-  odon:{name:'Odón Grís',title:'Médico de la Corte',glyph:'⚕',mood:'✧',sil:'odon'},
-  soraya:{name:'Soraya del Estuario',title:'Almirante Mercante',glyph:'⚓',mood:'◇',sil:'soraya'},
-  naia:{name:'Naia Brumal',title:'Astróloga Proscrita',glyph:'☽',mood:'✦',sil:'naia'},
-  garrik:{name:'Garrik del Umbral',title:'Embajador del Norte',glyph:'♞',mood:'❄',sil:'garrik'},
-  lupo:{name:'Lupo',title:'Bufón y Oído del Palacio',glyph:'☼',mood:'♣',sil:'lupo'},
-  ferran:{name:'Ferran Cobre',title:'Maestro de Gremios',glyph:'⚒',mood:'⬡',sil:'ferran'}
+  ines:{name:'Inés de Aramonte',title:'Cancillera de la Corona',glyph:'♛',mood:'◈',sil:'ines',portrait:'img/advisor-ines.jpg'},
+  bruno:{name:'Bruno Varda',title:'Tesorero Real',glyph:'♜',mood:'◆',sil:'bruno',portrait:'img/advisor-bruno.jpg'},
+  tala:{name:'Tala',title:'Voz de los Barrios',glyph:'♟',mood:'❖',sil:'tala',portrait:'img/advisor-tala.jpg'},
+  roldan:{name:'Roldán Hierro',title:'Mariscal de Valdoria',glyph:'⚔',mood:'✣',sil:'roldan',portrait:'img/advisor-roldan.jpg'},
+  elian:{name:'Elián de los Nueve',title:'Archivero Mayor',glyph:'✦',mood:'⌘',sil:'elian',portrait:'img/advisor-elian.jpg'},
+  mara:{name:'Mara Velo',title:'Maestra de Espías',glyph:'◐',mood:'♠',sil:'mara',portrait:'img/advisor-mara.jpg'},
+  odon:{name:'Odón Grís',title:'Médico de la Corte',glyph:'⚕',mood:'✧',sil:'odon',portrait:'img/advisor-odon.jpg'},
+  soraya:{name:'Soraya del Estuario',title:'Almirante Mercante',glyph:'⚓',mood:'◇',sil:'soraya',portrait:'img/advisor-soraya.jpg'},
+  naia:{name:'Naia Brumal',title:'Astróloga Proscrita',glyph:'☽',mood:'✦',sil:'naia',portrait:'img/advisor-naia.jpg'},
+  garrik:{name:'Garrik del Umbral',title:'Embajador del Norte',glyph:'♞',mood:'❄',sil:'garrik',portrait:'img/advisor-garrik.jpg'},
+  lupo:{name:'Lupo',title:'Bufón y Oído del Palacio',glyph:'☼',mood:'♣',sil:'lupo',portrait:'img/advisor-lupo.jpg'},
+  ferran:{name:'Ferran Cobre',title:'Maestro de Gremios',glyph:'⚒',mood:'⬡',sil:'ferran',portrait:'img/advisor-ferran.jpg'}
 };
 
 const REGIONS=[

@@ -19,7 +19,7 @@ No requiere instalación. Guarda en `localStorage` y se puede instalar como PWA.
 - Arcos largos: Fiebre de Vidrio, Tres Banderas, Observatorio Negro, República de Tinta, Hambruna del Sur, Cisma del Estuario, Crisis dinástica, Viaje a Sahr, Motín, Boda real, Inundación, Herejía de la estrella, y tres conspiraciones (mesa, protocolo, correo) que pueden matarte sin tocar 0 ni 100.
 - El reino se hereda: obras, edictos, facciones y vecinos no vuelven a 50/50.
 - Edad, sucesor nombrado, muerte natural, finales que pueden sellar la crónica.
-- Mapa en el Códice, anales exportables, legado con leyes de casa, música de corte.
+- Mapa en el Códice, anales exportables, legado con leyes de casa, retratos de corte y música procedural.
 
 ## Modos
 
@@ -35,5 +35,7 @@ No requiere instalación. Guarda en `localStorage` y se puede instalar como PWA.
 - `index.html` + `style.css` — interfaz
 - `content.js` — constantes, consejeros, logros, finales
 - `cards-core.js` / `cards-arcs.js` — el mazo
+- `audio.js` — camas y stingers (Web Audio)
 - `game.js` — motor
+- `img/` — retratos, dorso de carta y escenas de clímax
 - `manifest.webmanifest` + `sw.js` — PWA

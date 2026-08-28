@@ -65,14 +65,14 @@ function patchState(s){
   return merged;
 }
 
-let state=null,rng=null,drag={active:false,startX:0,x:0},audio={ac:null,drone:null};
+let state=null,rng=null,drag={active:false,startX:0,x:0,vx:0,lastX:0,lastT:0},audio={ac:null,drone:null};
 const el={};
 
 function cacheEls(){
   ['card','cardText','speakerName','speakerTitle','portraitGlyph','advisorMood','cardTag','rarityTag',
    'leftText','rightText','leftEffects','rightEffects','leftBtnText','rightBtnText','swipeLeftText','swipeRightText',
    'rulerName','yearLabel','reignLabel','ageLabel','seasonLabel','omens','whisper','legacyValue','chronicleCount',
-   'seedReadout','soundToggle','hintToggle','musicToggle','motionToggle','consultBtn','consultHint','cardEcho','fxLayer']
+   'seedReadout','soundToggle','hintToggle','musicToggle','motionToggle','consultBtn','consultHint','cardEcho','fxLayer','portraitImg','deathArt']
     .forEach(id=>el[id]=$('#'+id));
 }
 
@@ -150,7 +150,7 @@ function ensureHeir(forceName){
 function hasFlag(f){return state.flags.includes(f)}
 function addFlag(f){if(f&&!hasFlag(f))state.flags.push(f)}
 function clearFlag(f){state.flags=state.flags.filter(x=>x!==f)}
-function addEdict(name,year){if(!name)return;if(state.edicts.some(e=>e.name===name))return;state.edicts.push({name,year:year??state.worldYear})}
+function addEdict(name,year){if(!name)return;if(state.edicts.some(e=>e.name===name))return;state.edicts.push({name,year:year??state.worldYear});sfx('stamp')}
 function rememberPlace(place,work){
   if(!place||!work)return;
   const p=state.places[place]||{works:[],resentment:0};
@@ -402,6 +402,7 @@ function betrayFoil(){
     const secret={gold:'Quién mezclaba metal en el vino',protocol:'La cláusula que era un cuchillo',cipher:'La letra del Norte en palacio'}[kind];
     addEdict(edict);addSecret(secret);
     toast('La daga no alcanzó',`${state.persistent.plotFace||'El traidor'} pierde el oficio. Vos, no.`);
+    sfx('foil');
   }else{
     addEdict('La copa retirada');
     toast('Suerte de palacio','La copa no se bebió. El nombre sigue suelto en los pasillos.');
@@ -472,14 +473,14 @@ function choose(side,opts={}){
     $('#confirmDialog').showModal();return;
   }
   state.busy=true;
-  playTone(side==='right'?520:330);
+  sfx('swipe',side);
   if(state.mode==='relaxed'&&!state.undoUsed)state.snapshot=deepClone({...state,currentCard:card,snapshot:null});
   const realized=applyEffects(choice);
   if(card.place&&side==='right')rememberPlace(card.place,card.work);
   const years=card.years??1;
   state.decision++;state.reignDecisions++;state.meta.totalDecisions++;
   state.reignYear+=years;state.worldYear+=years;state.rulerAge+=years;
-  if(years>0)state.season=(state.season+years)%4;
+  if(years>0){state.season=(state.season+years)%4;pulseYear()}
   state.consulted=false;
   scheduleWorldEvents();updateHiddenMilestones();
   state.history.unshift({year:state.reignYear,world:state.worldYear,reign:state.reign,ruler:state.ruler,speaker:ADVISORS[card.advisor]?.name||'Destino',text:cardTextOf(card),choice:choice.label,effects:realized,annal:''});
@@ -557,7 +558,9 @@ function endReign(stat,high){
   if(!state.heir.name)state.heir.name=nameFor(state.heir.gender);
   $('#deathHeir').innerHTML=`<b>${escapeHtml(state.heir.name)}</b><span>Hered${state.heir.gender==='f'?'era':'ero'} de ${Math.max(1,Math.round(state.heir.age))} años. ${state.persistent.heirTrait?('Rasgo: '+state.persistent.heirTrait+'.'):'Todavía sin tutor claro.'}</span>`;
   $('#deathUnlocks').innerHTML=earned>=4?'<div class="unlock">✧ Tu largo reinado fortalece el legado de la dinastía.</div>':'';
+  if(el.deathArt){el.deathArt.src=deathArtFor(stat);el.deathArt.alt=stat==='betrayal'?'La daga':'El fin del reinado'}
   $('#deathDialog').showModal();saveAll();
+  sfx('death');
 }
 function inheritKingdom(){
   const next={pueblo:50,tesoro:50,ejercito:50,saber:50};
@@ -608,17 +611,48 @@ function cardTextOf(c){
   if(c.coda){for(const [flag,extra] of Object.entries(c.coda)){if(hasFlag(flag))t+=extra}}
   return substPlot(t);
 }
-function dealCard(){state.currentCard=getNextCard();state.consulted=false;state.rngCounter=rng.counter;saveAll();renderCard()}
+function dealCard(){state.currentCard=getNextCard();state.consulted=false;state.rngCounter=rng.counter;saveAll();renderCard();sfx('deal')}
+function artForCard(c){
+  if(!c)return '';
+  if(/^plot-gold-blade/.test(c.id))return 'img/climax-cup.jpg';
+  if(/^plot-protocol-blade/.test(c.id))return 'img/climax-left-seat.jpg';
+  if(/^plot-cipher-blade/.test(c.id))return 'img/climax-midnight.jpg';
+  return ADVISORS[c.advisor]?.portrait||'';
+}
+function deathArtFor(stat){
+  if(stat==='betrayal'){
+    const k=plotKind();
+    if(k==='gold')return 'img/climax-cup.jpg';
+    if(k==='protocol')return 'img/climax-left-seat.jpg';
+    if(k==='cipher')return 'img/climax-midnight.jpg';
+  }
+  if(stat==='age')return 'img/scene-death.jpg';
+  return 'img/scene-death.jpg';
+}
+function reduceMotionOn(){
+  return !!(state?.settings.reduceMotion||(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches));
+}
+function pulseYear(){
+  sfx('year');
+  if(reduceMotionOn()||!el.yearLabel)return;
+  el.yearLabel.classList.remove('pulse');void el.yearLabel.offsetWidth;el.yearLabel.classList.add('pulse');
+  setTimeout(()=>el.yearLabel.classList.remove('pulse'),420);
+}
 function renderCard(){
   const c=state.currentCard;if(!c)return;
   const a=ADVISORS[c.advisor]||{name:'El Destino',title:'sin título',glyph:'✶',mood:'•',sil:''};
-  el.card.style.transition='none';el.card.style.transform='';el.card.style.opacity='1';el.card.classList.remove('fly','dragging','tint-left','tint-right');
+  el.card.style.transition='none';el.card.style.transform='';el.card.style.opacity='1';el.card.classList.remove('fly','dragging','tint-left','tint-right','deal');
   el.cardText.textContent=cardTextOf(c);
   el.speakerName.textContent=a.name;el.speakerTitle.textContent=a.title;
   const rel=relOf(c.advisor);
   el.advisorMood.textContent=rel>=18?'◆':rel<=-18?'✗':(a.mood||'');
   el.portraitGlyph.className='sil '+(a.sil||c.advisor||'');
   el.portraitGlyph.innerHTML='<i class="sil-head"></i><i class="sil-body"></i>';
+  const art=artForCard(c),frame=$('#portrait');
+  if(el.portraitImg&&frame){
+    if(art){el.portraitImg.src=art;el.portraitImg.alt=a.name;frame.classList.add('has-art')}
+    else{el.portraitImg.removeAttribute('src');el.portraitImg.alt='';frame.classList.remove('has-art')}
+  }
   el.cardTag.textContent=(c.tags?.[0]||'CORTE').toUpperCase();
   el.rarityTag.textContent=String(c.rarity||'común').toUpperCase();
   const left=substPlot(flexLabel(c.left.label,'left')),right=substPlot(flexLabel(c.right.label,'right'));
@@ -630,6 +664,7 @@ function renderCard(){
   const canConsult=canUseConsult(c);
   el.consultBtn.disabled=!canConsult;
   discoverAdvisor(c.advisor);
+  if(!reduceMotionOn()){void el.card.offsetWidth;el.card.classList.add('deal')}
   requestAnimationFrame(()=>el.card.style.transition='transform .18s, opacity .18s');
 }
 function flexLabel(label,side){
@@ -652,7 +687,7 @@ function consultCouncil(){
   el.leftEffects.textContent=effectPreview(c.left,true);
   el.rightEffects.textContent=effectPreview(c.right,true);
   el.consultBtn.disabled=true;
-  playTone(410);saveAll();
+  sfx('consult');saveAll();
 }
 
 function renderStats(){
@@ -734,14 +769,18 @@ function spawnDeltas(realized){
 }
 
 function animateChoice(side,cb){
-  if(state.settings.reduceMotion||window.matchMedia('(prefers-reduced-motion:reduce)').matches){cb();return}
+  if(reduceMotionOn()){cb();return}
   el.card.classList.add('fly');const dir=side==='right'?1:-1;
-  el.card.style.transform=`translateX(${dir*620}px) rotate(${dir*24}deg)`;el.card.style.opacity='0';
-  setTimeout(cb,300);
+  el.card.style.transition='transform .32s cubic-bezier(.2,.7,.2,1), opacity .28s';
+  el.card.style.transform=`translateX(${dir*640}px) rotate(${dir*26}deg)`;el.card.style.opacity='0';
+  setTimeout(cb,280);
 }
 function updateDrag(x){
-  drag.x=x;const dx=x-drag.startX,rot=clamp(dx/22,-13,13);
-  const snap=Math.abs(dx)>70?Math.sign(dx)*Math.min(Math.abs(dx),140):dx;
+  const t=performance.now();
+  if(drag.lastT)drag.vx=(x-drag.lastX)/Math.max(1,t-drag.lastT);
+  drag.lastX=x;drag.lastT=t;drag.x=x;
+  const dx=x-drag.startX,rot=clamp(dx/22,-14,14);
+  const snap=Math.abs(dx)>70?Math.sign(dx)*Math.min(Math.abs(dx),148):dx;
   el.card.style.transform=`translateX(${snap}px) rotate(${rot}deg)`;
   $('#leftPreview').classList.toggle('active',dx<-25);$('#rightPreview').classList.toggle('active',dx>25);
   $('#swipeLeft').classList.toggle('show',dx<-28);$('#swipeRight').classList.toggle('show',dx>28);
@@ -750,45 +789,38 @@ function updateDrag(x){
 function endDrag(){
   if(!drag.active)return;drag.active=false;el.card.classList.remove('dragging');
   const dx=drag.x-drag.startX;
+  const flung=Math.abs(dx)>88||(Math.abs(dx)>34&&Math.abs(drag.vx)>0.52);
   $('#leftPreview').classList.remove('active');$('#rightPreview').classList.remove('active');
   $('#swipeLeft').classList.remove('show');$('#swipeRight').classList.remove('show');
   el.card.classList.remove('tint-left','tint-right');
-  if(Math.abs(dx)>90&&!state.busy){if(navigator.vibrate)navigator.vibrate(12);choose(dx>0?'right':'left')}
-  else{el.card.style.transform='';el.card.style.opacity='1'}
+  if(flung&&!state.busy){if(navigator.vibrate)navigator.vibrate(12);choose(dx>0?'right':'left')}
+  else if(!reduceMotionOn()){
+    el.card.style.transition='transform .34s cubic-bezier(.22,1.28,.32,1), opacity .18s';
+    el.card.style.transform='';el.card.style.opacity='1';
+    setTimeout(()=>{if(el.card)el.card.style.transition='transform .18s, opacity .18s'},360);
+  }else{el.card.style.transform='';el.card.style.opacity='1'}
+  drag.vx=0;drag.lastT=0;
 }
 
 function toast(title,text){const d=document.createElement('div');d.className='toast';d.innerHTML=`<b>${escapeHtml(title)}</b><span>${escapeHtml(text)}</span>`;$('#toastLayer').appendChild(d);setTimeout(()=>d.remove(),4200)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function formatEffects(e){return Object.entries(e||{}).map(([k,v])=>`${STAT_ICONS[k]} ${v>0?'+':''}${v}`).join(' · ')}
 
+function sfx(name,arg){
+  if(!state?.settings.sound||typeof Score==='undefined'||!Score[name])return;
+  try{Score[name](arg)}catch{}
+}
 function ensureAudio(){
+  if(typeof Score!=='undefined')return Score.ctx();
   if(!state?.settings.sound&&!state?.settings.music)return null;
   try{const AC=window.AudioContext||window.webkitAudioContext;audio.ac=audio.ac||new AC();if(audio.ac.state==='suspended')audio.ac.resume();return audio.ac}catch{return null}
 }
-function playTone(freq){
-  if(!state?.settings.sound)return;const ac=ensureAudio();if(!ac)return;
-  try{
-    const o=ac.createOscillator(),o2=ac.createOscillator(),g=ac.createGain();
-    o.type='sine';o2.type='triangle';o.frequency.value=freq;o2.frequency.value=freq*1.5;
-    g.gain.setValueAtTime(.03,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.16);
-    o.connect(g);o2.connect(g);g.connect(ac.destination);o.start();o2.start();o.stop(ac.currentTime+.16);o2.stop(ac.currentTime+.16);
-  }catch{}
-}
 function tuneDrone(){
-  if(!state?.settings.music){stopDrone();return}
-  const ac=ensureAudio();if(!ac)return;
-  if(!audio.drone){
-    const o=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();
-    o.type='sine';o.frequency.value=110;g.gain.value=.012;f.type='lowpass';f.frequency.value=420;
-    o.connect(f);f.connect(g);g.connect(ac.destination);o.start();audio.drone={o,g,f};
-  }
-  let freq=108;
-  if(hasFlag('plague_active'))freq=92;
-  if(hasFlag('war_active'))freq=128;
-  if(hasFlag('void_active')||hasFlag('void_door'))freq=73;
-  try{audio.drone.o.frequency.setTargetAtTime(freq,ac.currentTime,.4);audio.drone.g.gain.setTargetAtTime(state.settings.music?0.014:0.0001,ac.currentTime,.5)}catch{}
+  if(typeof Score!=='undefined'){Score.tick(state);return}
 }
-function stopDrone(){if(!audio.drone)return;try{audio.drone.g.gain.setTargetAtTime(.0001,audio.ac.currentTime,.3)}catch{}}
+function stopDrone(){
+  if(typeof Score!=='undefined')Score.setBed('court',false);
+}
 
 function saveAll(){if(!state)return;localStorage.setItem(SAVE_KEY,JSON.stringify({...state,snapshot:state.mode==='relaxed'?state.snapshot:null}));localStorage.setItem(META_KEY,JSON.stringify(state.meta))}
 function loadGame(){
@@ -806,7 +838,7 @@ function startNew(opts={}){
   const house={color:$('#colorInput').value||'#c6a45b',motto:$('#mottoInput').value.trim(),founder:$('#founderInput').value.trim()};
   state=initialState(seed,dynasty,mode,meta,house);
   rng=new RNG(seed);state.rulerGender=pickGender();applyStartPerks();setRuler();applyHouse();saveAll();
-  $('#startDialog').close();renderAll();dealCard();tuneDrone();
+  $('#startDialog').close();renderAll();dealCard();ensureAudio();tuneDrone();
   toast(opts.daily?'Desafío del día':'La crónica comienza',`${state.ruler} recibe la Corona de Ceniza.`);
 }
 function exportSave(){saveAll();const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`corona-de-ceniza-${state.dynasty.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.json`;a.click();URL.revokeObjectURL(a.href)}
@@ -859,7 +891,7 @@ function renderCodex(tab='achievements'){
   $$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));const box=$('#codexContent');
   if(tab==='achievements')box.innerHTML=ACHIEVEMENTS.map(([id,t,d,i])=>`<div class="achievement ${state.meta.achievements.includes(id)?'unlocked':''}"><div class="badge">${state.meta.achievements.includes(id)?i:'?'}</div><div><b>${state.meta.achievements.includes(id)?t:'Logro oculto'}</b><small>${state.meta.achievements.includes(id)?d:'Seguí gobernando para descubrirlo.'}</small></div></div>`).join('');
   if(tab==='legacy')box.innerHTML=PERKS.map(([id,t,d,cost,icon])=>{const own=state.meta.perks?.includes(id),can=state.meta.legacy>=cost;return `<div class="achievement ${own?'unlocked':''}"><div class="badge">${icon}</div><div><b>${t}</b><small>${d}</small><span class="perk-cost">${own?'Adquirido':cost+' ✧'}</span></div><button class="perk-buy" data-perk="${id}" ${own||!can?'disabled':''}>${own?'Activo':'Adquirir'}</button></div>`}).join('');
-  if(tab==='advisors')box.innerHTML=`<div class="advisor-grid">${Object.entries(ADVISORS).map(([id,a])=>{const r=relOf(id);const cls=state.meta.discoveredAdvisors.includes(id)?'':'locked';const mood=r>=18?'ally':r<=-18?'foe':'';return `<div class="advisor-cell ${cls} ${mood}"><b>${state.meta.discoveredAdvisors.includes(id)?a.glyph+' '+a.name:'? Desconocido'}</b><small>${state.meta.discoveredAdvisors.includes(id)?a.title:'Todavía no llegó a tu corte.'}</small>${state.meta.discoveredAdvisors.includes(id)?`<span class="rel">Afinidad: ${r>0?'+':''}${r}${r>=18?' · aliado':r<=-18?' · enemigo':''}</span>`:''}</div>`}).join('')}</div>`;
+  if(tab==='advisors')box.innerHTML=`<div class="advisor-grid">${Object.entries(ADVISORS).map(([id,a])=>{const seen=state.meta.discoveredAdvisors.includes(id);const r=relOf(id);const cls=seen?'':'locked';const mood=r>=18?'ally':r<=-18?'foe':'';const face=seen&&a.portrait?`<img class="advisor-face" src="${a.portrait}" alt="">`:'';return `<div class="advisor-cell ${cls} ${mood}">${face}<b>${seen?a.glyph+' '+a.name:'? Desconocido'}</b><small>${seen?a.title:'Todavía no llegó a tu corte.'}</small>${seen?`<span class="rel">Afinidad: ${r>0?'+':''}${r}${r>=18?' · aliado':r<=-18?' · enemigo':''}</span>`:''}</div>`}).join('')}</div>`;
   if(tab==='edicts'){
     const list=state.edicts.length?state.edicts.map(e=>`<div class="edict"><b>${escapeHtml(e.name)}</b><div>Año mundial ${e.year}</div></div>`).join(''):'<p class="lead">Todavía no hay edictos. Construí, firmá, casá.</p>';
     const flags=Object.entries(EDICT_LABELS).filter(([id])=>hasFlag(id)).map(([,n])=>n);
@@ -907,7 +939,8 @@ function parseURL(){
 function bind(){
   $('#startBtn').onclick=()=>startNew();
   $('#dailyBtn').onclick=()=>startNew({daily:true});
-  $('#continueBtn').onclick=()=>{if(loadGame()){ $('#startDialog').close();renderAll();if(!state.currentCard)dealCard();else renderCard();tuneDrone()}};
+  $('#continueBtn').onclick=()=>{if(loadGame()){ $('#startDialog').close();renderAll();if(!state.currentCard)dealCard();else renderCard();ensureAudio();tuneDrone()}};
+  $('#showFoundBtn').onclick=()=>{$('#foundFields').classList.remove('collapsed');$('#showFoundBtn').classList.add('hidden')};
   $('#menuBtn').onclick=$('#brandBtn').onclick=()=>$('#menuDialog').showModal();
   $('#helpBtn').onclick=()=>$('#helpDialog').showModal();
   $('#resumeBtn').onclick=()=>$('#menuDialog').close();
@@ -915,10 +948,10 @@ function bind(){
   $('#saveBtn').onclick=()=>{saveAll();toast('Guardado','La crónica quedó almacenada en este navegador.')};
   $('#exportBtn').onclick=exportSave;$('#importBtn').onclick=()=>$('#importFile').click();
   $('#importFile').onchange=e=>e.target.files[0]&&importSave(e.target.files[0]);
-  $('#newGameBtn').onclick=()=>{if(confirm('¿Fundar una nueva dinastía? El progreso meta (logros y legado) se conserva.')){localStorage.removeItem(SAVE_KEY);$('#menuDialog').close();$('#continueBtn').classList.add('hidden');$('#startDialog').showModal()}};
-  el.soundToggle.onchange=e=>{state.settings.sound=e.target.checked;saveAll()};
+  $('#newGameBtn').onclick=()=>{if(confirm('¿Fundar una nueva dinastía? El progreso meta (logros y legado) se conserva.')){localStorage.removeItem(SAVE_KEY);$('#menuDialog').close();$('#continueBtn').classList.add('hidden');$('#showFoundBtn').classList.add('hidden');$('#foundFields').classList.remove('collapsed');$('#startDialog').showModal()}};
+  el.soundToggle.onchange=e=>{state.settings.sound=e.target.checked;saveAll();ensureAudio()};
   el.hintToggle.onchange=e=>{state.settings.hints=e.target.checked;saveAll();renderCard()};
-  el.musicToggle.onchange=e=>{state.settings.music=e.target.checked;saveAll();if(e.target.checked)tuneDrone();else stopDrone()};
+  el.musicToggle.onchange=e=>{state.settings.music=e.target.checked;saveAll();ensureAudio();tuneDrone()};
   el.motionToggle.onchange=e=>{state.settings.reduceMotion=e.target.checked;saveAll();renderHeader()};
   $$('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).close());
   $('#leftBtn').onclick=()=>choose('left');$('#rightBtn').onclick=()=>choose('right');
@@ -931,10 +964,10 @@ function bind(){
   $('#endingContinueBtn').onclick=()=>{$('#endingDialog').close();dealCard()};
   $('#endingSealBtn').onclick=sealChronicle;
   $('#sealedExportBtn').onclick=exportBook;
-  $('#sealedNewBtn').onclick=()=>{localStorage.removeItem(SAVE_KEY);$('#sealedDialog').close();$('#startDialog').showModal()};
+  $('#sealedNewBtn').onclick=()=>{localStorage.removeItem(SAVE_KEY);$('#sealedDialog').close();$('#foundFields').classList.remove('collapsed');$('#continueBtn').classList.add('hidden');$('#showFoundBtn').classList.add('hidden');$('#startDialog').showModal()};
   $('#confirmNo').onclick=()=>{$('#confirmDialog').close();state.pendingSide=null};
   $('#confirmYes').onclick=()=>{const s=state.pendingSide;$('#confirmDialog').close();if(s)choose(s,{confirmed:true})};
-  el.card.addEventListener('pointerdown',e=>{if(!state||state.busy)return;drag={active:true,startX:e.clientX,x:e.clientX};el.card.setPointerCapture(e.pointerId);el.card.classList.add('dragging');ensureAudio()});
+  el.card.addEventListener('pointerdown',e=>{if(!state||state.busy)return;drag={active:true,startX:e.clientX,x:e.clientX,vx:0,lastX:e.clientX,lastT:performance.now()};el.card.setPointerCapture(e.pointerId);el.card.classList.add('dragging');ensureAudio()});
   el.card.addEventListener('pointermove',e=>drag.active&&updateDrag(e.clientX));
   el.card.addEventListener('pointerup',endDrag);el.card.addEventListener('pointercancel',endDrag);
   document.addEventListener('keydown',e=>{
@@ -954,6 +987,8 @@ function boot(){
   const daily=parseURL();
   const has=!!(localStorage.getItem(SAVE_KEY)||localStorage.getItem(SAVE_KEY_V1));
   $('#continueBtn').classList.toggle('hidden',!has);
+  $('#showFoundBtn').classList.toggle('hidden',!has);
+  $('#foundFields').classList.toggle('collapsed',has);
   if(daily){$('#seedInput').value=dailySeed();$('#startDialog').showModal()}
   else $('#startDialog').showModal();
   registerPWA();
