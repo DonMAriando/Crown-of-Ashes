@@ -4,6 +4,7 @@ const SAVE_KEY='corona-de-ceniza-save-v2';
 const META_KEY='corona-de-ceniza-meta-v2';
 const SAVE_KEY_V1='corona-de-ceniza-save-v1';
 const META_KEY_V1='corona-de-ceniza-meta-v1';
+const MUSIC_PREF_KEY='corona-de-ceniza-music';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -51,7 +52,7 @@ function initialState(seed,dynasty,mode,meta,house){
     history:[],samples:[],recent:[],seen:{},onceSeen:[],delayed:[],forced:[],
     currentCard:null,season:0,agendaBias:null,lastAgenda:0,lastConsult:-99,consulted:false,
     lastUltimatum:{},sealed:false,pendingSide:null,snapshot:null,busy:false,
-    meta,settings:{sound:true,hints:true,music:true,reduceMotion:false},endingShown:[]
+    meta,settings:{sound:true,hints:true,music:readMusicPref(),reduceMotion:false},endingShown:[]
   };
 }
 function patchState(s){
@@ -62,6 +63,8 @@ function patchState(s){
     settings:{...base.settings,...(s.settings||{})},house:{...base.house,...(s.house||{})},
     relationships:{...base.relationships,...(s.relationships||{})}};
   merged.meta={...defaultMeta(),...merged.meta};
+  merged.busy=false;merged.pendingSide=null;
+  if(!merged.currentCard||!merged.currentCard.left||!merged.currentCard.right)merged.currentCard=null;
   return merged;
 }
 
@@ -72,7 +75,7 @@ function cacheEls(){
   ['card','cardText','speakerName','speakerTitle','portraitGlyph','advisorMood','cardTag','rarityTag',
    'leftText','rightText','leftEffects','rightEffects','leftBtnText','rightBtnText','swipeLeftText','swipeRightText',
    'rulerName','yearLabel','reignLabel','ageLabel','seasonLabel','omens','whisper','legacyValue','chronicleCount',
-   'seedReadout','soundToggle','hintToggle','musicToggle','motionToggle','consultBtn','consultHint','cardEcho','fxLayer','portraitImg','deathArt']
+   'seedReadout','soundToggle','hintToggle','musicToggle','motionToggle','consultBtn','consultHint','cardEcho','fxLayer','portraitImg','deathArt','musicBtn']
     .forEach(id=>el[id]=$('#'+id));
 }
 
@@ -468,40 +471,52 @@ function annalLine(h){
 function choose(side,opts={}){
   if(!state?.currentCard||(state.busy&&!opts.confirmed))return;
   const card=state.currentCard,choice=card[side];
+  if(!choice)return;
   if(!opts.confirmed&&state.mode==='harsh'&&wouldKill(choice)){
     state.pendingSide=side;$('#confirmText').textContent=`${STAT_LABELS[wouldKill(choice)]} llegaría al extremo. En Corona de Hierro, eso termina el reinado.`;
     $('#confirmDialog').showModal();return;
   }
   state.busy=true;
-  sfx('swipe',side);
-  if(state.mode==='relaxed'&&!state.undoUsed)state.snapshot=deepClone({...state,currentCard:card,snapshot:null});
-  const realized=applyEffects(choice);
-  if(card.place&&side==='right')rememberPlace(card.place,card.work);
-  const years=card.years??1;
-  state.decision++;state.reignDecisions++;state.meta.totalDecisions++;
-  state.reignYear+=years;state.worldYear+=years;state.rulerAge+=years;
-  if(years>0){state.season=(state.season+years)%4;pulseYear()}
-  state.consulted=false;
-  scheduleWorldEvents();updateHiddenMilestones();
-  state.history.unshift({year:state.reignYear,world:state.worldYear,reign:state.reign,ruler:state.ruler,speaker:ADVISORS[card.advisor]?.name||'Destino',text:cardTextOf(card),choice:choice.label,effects:realized,annal:''});
-  state.history[0].annal=annalLine(state.history[0]);
-  state.history=state.history.slice(0,160);
-  state.samples.push({year:state.worldYear,...state.stats});if(state.samples.length>220)state.samples.shift();
-  state.seen[card.id]=state.decision;state.recent.unshift(card.id);state.recent=state.recent.slice(0,7);
-  if((card.once||card.tutorial)&&!state.onceSeen.includes(card.id))state.onceSeen.push(card.id);
-  discoverAdvisor(card.advisor);
-  if(card.id==='plague-herbs'&&side==='right')addFlag('plague_research');
-  if(card.id==='void-door'&&side==='right')addSecret('Las medidas de una puerta que no debería existir');
-  if(card.tutorial&&card.id==='tut-5')state.tutorialDone=true;
-  checkSecrets();checkAchievements();state.rngCounter=rng.counter;saveAll();
-  spawnDeltas(realized);
-  animateChoice(side,()=>{
-    try{
-      renderStats();renderHeader();
-      if(checkDeath()||checkAgeDeath()||checkBetrayalDeath()||checkSpecialEnding())return;
-      dealCard();
-    }finally{state.busy=false}
-  });
+  try{
+    sfx('swipe',side);
+    if(state.mode==='relaxed'&&!state.undoUsed)state.snapshot=deepClone({...state,currentCard:card,snapshot:null,busy:false});
+    const realized=applyEffects(choice);
+    if(card.place&&side==='right')rememberPlace(card.place,card.work);
+    const years=card.years??1;
+    state.decision++;state.reignDecisions++;state.meta.totalDecisions++;
+    state.reignYear+=years;state.worldYear+=years;state.rulerAge+=years;
+    if(years>0){state.season=(state.season+years)%4;pulseYear()}
+    state.consulted=false;
+    scheduleWorldEvents();updateHiddenMilestones();
+    state.history.unshift({year:state.reignYear,world:state.worldYear,reign:state.reign,ruler:state.ruler,speaker:ADVISORS[card.advisor]?.name||'Destino',text:cardTextOf(card),choice:choice.label,effects:realized,annal:''});
+    state.history[0].annal=annalLine(state.history[0]);
+    state.history=state.history.slice(0,160);
+    state.samples.push({year:state.worldYear,...state.stats});if(state.samples.length>220)state.samples.shift();
+    state.seen[card.id]=state.decision;state.recent.unshift(card.id);state.recent=state.recent.slice(0,7);
+    if((card.once||card.tutorial)&&!state.onceSeen.includes(card.id))state.onceSeen.push(card.id);
+    discoverAdvisor(card.advisor);
+    if(card.id==='plague-herbs'&&side==='right')addFlag('plague_research');
+    if(card.id==='void-door'&&side==='right')addSecret('Las medidas de una puerta que no debería existir');
+    if(card.tutorial&&card.id==='tut-5')state.tutorialDone=true;
+    checkSecrets();checkAchievements();state.rngCounter=rng.counter;saveAll();
+    spawnDeltas(realized);
+    animateChoice(side,()=>{
+      try{
+        renderStats();renderHeader();
+        if(checkDeath()||checkAgeDeath()||checkBetrayalDeath()||checkSpecialEnding())return;
+        dealCard();
+      }catch(err){console.error(err);try{dealCard()}catch{}}
+      finally{releaseCard()}
+    });
+  }catch(err){console.error(err);releaseCard()}
+}
+function releaseCard(){
+  if(state)state.busy=false;
+  drag.active=false;
+  if(!el.card)return;
+  el.card.classList.remove('fly','dragging','tint-left','tint-right');
+  el.card.style.opacity='1';
+  el.card.style.transform='';
 }
 function undoLast(){
   if(state.mode!=='relaxed'){toast('Sin deshacer','Solo el modo Consejo Real permite deshacer, una vez por reinado.');return}
@@ -639,9 +654,10 @@ function pulseYear(){
   setTimeout(()=>el.yearLabel.classList.remove('pulse'),420);
 }
 function renderCard(){
-  const c=state.currentCard;if(!c)return;
+  const c=state.currentCard;if(!c||!c.left||!c.right){state.currentCard=null;return}
   const a=ADVISORS[c.advisor]||{name:'El Destino',title:'sin título',glyph:'✶',mood:'•',sil:''};
-  el.card.style.transition='none';el.card.style.transform='';el.card.style.opacity='1';el.card.classList.remove('fly','dragging','tint-left','tint-right','deal');
+  releaseCard();
+  el.card.style.transition='none';el.card.style.transform='';el.card.style.opacity='1';el.card.classList.remove('deal');
   el.cardText.textContent=cardTextOf(c);
   el.speakerName.textContent=a.name;el.speakerTitle.textContent=a.title;
   const rel=relOf(c.advisor);
@@ -740,8 +756,28 @@ function renderAll(){
   renderStats();renderHeader();
   if(el.soundToggle)el.soundToggle.checked=state.settings.sound;
   if(el.hintToggle)el.hintToggle.checked=state.settings.hints;
-  if(el.musicToggle)el.musicToggle.checked=state.settings.music;
   if(el.motionToggle)el.motionToggle.checked=state.settings.reduceMotion;
+  syncMusicBtn();
+}
+function readMusicPref(){return localStorage.getItem(MUSIC_PREF_KEY)!=='0'}
+function writeMusicPref(on){localStorage.setItem(MUSIC_PREF_KEY,on?'1':'0')}
+function musicEnabled(){return state?!!state.settings.music:readMusicPref()}
+function syncMusicBtn(){
+  const on=musicEnabled();
+  if(el.musicToggle)el.musicToggle.checked=on;
+  const b=el.musicBtn;if(!b)return;
+  b.classList.toggle('is-off',!on);
+  b.setAttribute('aria-pressed',on?'true':'false');
+  b.setAttribute('aria-label',on?'Silenciar la música de corte':'Activar la música de corte');
+  b.title=on?'Música de corte · encendida':'Música de corte · apagada';
+}
+function setMusic(on){
+  on=!!on;
+  writeMusicPref(on);
+  if(state){state.settings.music=on;saveAll()}
+  syncMusicBtn();
+  if(on){ensureAudio();tuneDrone()}
+  else if(typeof Score!=='undefined')Score.setBed('court',false);
 }
 function roman(n){
   if(n<=0)return 'I';
@@ -811,18 +847,26 @@ function sfx(name,arg){
   try{Score[name](arg)}catch{}
 }
 function ensureAudio(){
-  if(typeof Score!=='undefined')return Score.ctx();
-  if(!state?.settings.sound&&!state?.settings.music)return null;
-  try{const AC=window.AudioContext||window.webkitAudioContext;audio.ac=audio.ac||new AC();if(audio.ac.state==='suspended')audio.ac.resume();return audio.ac}catch{return null}
+  if(typeof Score==='undefined')return null;
+  try{return Score.ctx()}catch{return null}
 }
 function tuneDrone(){
-  if(typeof Score!=='undefined'){Score.tick(state);return}
+  if(typeof Score==='undefined')return;
+  try{
+    if(!state){Score.setBed('court',true);return}
+    Score.tick(state);
+  }catch(err){console.error(err)}
+}
+function armAudio(){
+  const go=()=>{ensureAudio();tuneDrone()};
+  document.addEventListener('pointerdown',go,{passive:true,once:true});
+  document.addEventListener('keydown',go,{once:true});
 }
 function stopDrone(){
   if(typeof Score!=='undefined')Score.setBed('court',false);
 }
 
-function saveAll(){if(!state)return;localStorage.setItem(SAVE_KEY,JSON.stringify({...state,snapshot:state.mode==='relaxed'?state.snapshot:null}));localStorage.setItem(META_KEY,JSON.stringify(state.meta))}
+function saveAll(){if(!state)return;localStorage.setItem(SAVE_KEY,JSON.stringify({...state,busy:false,pendingSide:null,snapshot:state.mode==='relaxed'?state.snapshot:null}));localStorage.setItem(META_KEY,JSON.stringify(state.meta))}
 function loadGame(){
   try{
     const raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(SAVE_KEY_V1);
@@ -937,9 +981,10 @@ function parseURL(){
 }
 
 function bind(){
+  armAudio();
   $('#startBtn').onclick=()=>startNew();
   $('#dailyBtn').onclick=()=>startNew({daily:true});
-  $('#continueBtn').onclick=()=>{if(loadGame()){ $('#startDialog').close();renderAll();if(!state.currentCard)dealCard();else renderCard();ensureAudio();tuneDrone()}};
+  $('#continueBtn').onclick=()=>{if(loadGame()){state.busy=false;$('#startDialog').close();renderAll();if(!state.currentCard)dealCard();else renderCard();ensureAudio();tuneDrone()}};
   $('#showFoundBtn').onclick=()=>{$('#foundFields').classList.remove('collapsed');$('#showFoundBtn').classList.add('hidden')};
   $('#menuBtn').onclick=$('#brandBtn').onclick=()=>$('#menuDialog').showModal();
   $('#helpBtn').onclick=()=>$('#helpDialog').showModal();
@@ -951,7 +996,8 @@ function bind(){
   $('#newGameBtn').onclick=()=>{if(confirm('¿Fundar una nueva dinastía? El progreso meta (logros y legado) se conserva.')){localStorage.removeItem(SAVE_KEY);$('#menuDialog').close();$('#continueBtn').classList.add('hidden');$('#showFoundBtn').classList.add('hidden');$('#foundFields').classList.remove('collapsed');$('#startDialog').showModal()}};
   el.soundToggle.onchange=e=>{state.settings.sound=e.target.checked;saveAll();ensureAudio()};
   el.hintToggle.onchange=e=>{state.settings.hints=e.target.checked;saveAll();renderCard()};
-  el.musicToggle.onchange=e=>{state.settings.music=e.target.checked;saveAll();ensureAudio();tuneDrone()};
+  el.musicToggle.onchange=e=>setMusic(e.target.checked);
+  if(el.musicBtn)el.musicBtn.onclick=()=>{ensureAudio();setMusic(!musicEnabled())};
   el.motionToggle.onchange=e=>{state.settings.reduceMotion=e.target.checked;saveAll();renderHeader()};
   $$('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).close());
   $('#leftBtn').onclick=()=>choose('left');$('#rightBtn').onclick=()=>choose('right');
@@ -977,13 +1023,14 @@ function bind(){
     if(e.key==='ArrowRight')choose('right');
     if(e.key==='z'||e.key==='Z')undoLast();
     if(e.key==='c'||e.key==='C')consultCouncil();
+    if(e.key==='m'||e.key==='M'){ensureAudio();setMusic(!musicEnabled())}
   });
 }
 
 function registerPWA(){if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{})}
 
 function boot(){
-  cacheEls();bind();
+  cacheEls();bind();syncMusicBtn();
   const daily=parseURL();
   const has=!!(localStorage.getItem(SAVE_KEY)||localStorage.getItem(SAVE_KEY_V1));
   $('#continueBtn').classList.toggle('hidden',!has);

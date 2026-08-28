@@ -9,13 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;600;700&display=swap" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=2.9" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
 </head>
 <body>
-  <div class="kingdom-bg" id="kingdomBg" aria-hidden="true"></div>
+  <div class="kingdom-bg" id="kingdomBg" aria-hidden="true"><div class="kingdom-seal"></div></div>
   <div id="app" class="app">
     <header class="topbar">
       <button id="brandBtn" class="brand" aria-label="Abrir menú">
@@ -29,6 +29,7 @@
       </div>
       <div class="top-actions">
         <span id="seasonLabel" class="season-chip" title="Estación">Primavera</span>
+        <button id="musicBtn" class="icon-btn music-btn" type="button" aria-pressed="true" aria-label="Silenciar la música de corte" title="Música de corte"><span aria-hidden="true">♪</span></button>
         <button id="helpBtn" class="icon-btn" aria-label="Ayuda">?</button>
         <button id="menuBtn" class="icon-btn" aria-label="Menú">☰</button>
       </div>
@@ -166,7 +167,7 @@
       </ul>
       <p>Los consejeros tienen humor. Si los maltratás, dejan de ser decorado. Las obras que construyas sobreviven a tu muerte. El tiempo no es siempre un año: algunas cartas duran una noche.</p>
       <p>La corrupción, la autoridad y los rumores no se ven en las barras. Si se pudren, puede entrar una carta de traición: te avisan. Si ignorás los avisos, la daga no necesita que un pilar toque 0.</p>
-      <p>Atajos: <kbd>←</kbd> <kbd>→</kbd> decidir · <kbd>?</kbd> esta ayuda · <kbd>Z</kbd> deshacer (si el modo lo permite).</p>
+      <p>Atajos: <kbd>←</kbd> <kbd>→</kbd> decidir · <kbd>M</kbd> música de corte · <kbd>?</kbd> esta ayuda · <kbd>Z</kbd> deshacer (si el modo lo permite).</p>
     </div>
   </dialog>
 
@@ -250,7 +251,7 @@
   <script src="content.js"></script>
   <script src="cards-core.js"></script>
   <script src="cards-arcs.js"></script>
-  <script src="audio.js"></script>
-  <script src="game.js"></script>
+  <script src="audio.js?v=2.10"></script>
+  <script src="game.js?v=2.9"></script>
 </body>
 </html>
