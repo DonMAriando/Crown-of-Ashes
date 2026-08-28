@@ -2,24 +2,43 @@
 
 Juego original de estrategia narrativa en español (vos rioplatense). Gobernás Valdoria a través de generaciones: cada decisión deja una cicatriz; cada muerte, una herencia.
 
+Versión de contenido **2.2.0**. Repositorio: [DonMAriando/Crown-of-Ashes](https://github.com/DonMAriando/Crown-of-Ashes).
+
 ## Cómo jugar
 
-1. Abrí `index.html` en un navegador moderno (o serví la carpeta con cualquier http estático).
+1. Abrí `index.html` en un navegador moderno, o serví la carpeta con cualquier HTTP estático (hace falta servidor solo si querés instalarla como app).
 2. Nombrá la dinastía, color, lema y modo. La semilla puede ir vacía o compartirse por URL: `index.html?seed=mi-semilla&mode=harsh`.
 3. `?daily=1` arranca el desafío del día.
-4. Arrastrá las cartas, usá los botones o las flechas ← →. `C` consulta al Consejo. `Z` deshace (solo Consejo Real). `?` abre la ayuda.
-5. Mantené Pueblo, Tesoro, Ejército y Saber lejos de 0 y de 100. Tocá cada pilar para leer su muerte. Desde el segundo reinado, una conspiración puede matarte con los pilares en pie: te avisan antes.
+4. Arrastrá la carta, usá los botones o las flechas ← →.
+5. Mantené **Pueblo**, **Tesoro**, **Ejército** y **Saber** lejos de **0** y de **100**. Tocá cada pilar para leer su muerte.
 
-No requiere instalación. Guarda en `localStorage` y se puede instalar como PWA.
+Desde el segundo reinado, una conspiración puede matarte con los pilares en pie: te avisan antes.
 
-## Qué hay en esta versión
+La partida se guarda en este navegador (`localStorage`). No requiere instalación.
+
+### Controles
+
+| Qué | Cómo |
+|---|---|
+| Decidir | Arrastre, botones, ← → |
+| Consejo | Botón Consejo o `C` |
+| Música de corte | Botón ♪ en la barra, checkbox del menú, o `M` |
+| Ayuda | `?` |
+| Deshacer | `Z` (solo modo Consejo Real, una vez por reinado) |
+
+El botón ♪ corta solo la melodía de corte. Los toques al deslizar, sellar o consultar siguen, si el sonido está prendido.
+
+## Qué hay ahora
 
 - Coronación tutorial, pistas en la carta (también en el teléfono) y números que saltan al decidir.
-- ~200 cartas escritas, peticiones procedurales con memoria de lugares, estaciones y consejeros que se vuelven aliados o enemigos.
-- Arcos largos: Fiebre de Vidrio, Tres Banderas, Observatorio Negro, República de Tinta, Hambruna del Sur, Cisma del Estuario, Crisis dinástica, Viaje a Sahr, Motín, Boda real, Inundación, Herejía de la estrella, y tres conspiraciones (mesa, protocolo, correo) que pueden matarte sin tocar 0 ni 100.
+- ~200 cartas escritas, peticiones procedurales con memoria de lugares, estaciones y doce consejeros que se vuelven aliados o enemigos.
+- Arcos largos: Fiebre de Vidrio, Tres Banderas, Observatorio Negro, República de Tinta, Hambruna del Sur, Cisma del Estuario, crisis dinástica, viaje a Sahr, motín, boda real, inundación, herejía de la estrella.
+- Tres conspiraciones (copa, protocolo, correo): una por corona, avisada, pueden matar sin tocar 0 ni 100. Si te matan, el heredero hereda al asesino.
 - El reino se hereda: obras, edictos, facciones y vecinos no vuelven a 50/50.
 - Edad, sucesor nombrado, muerte natural, finales que pueden sellar la crónica.
-- Mapa en el Códice, anales exportables, legado con leyes de casa, retratos de corte y música procedural.
+- Códice con mapa, anales exportables, legado con leyes de casa.
+- Retratos de corte, dorso de carta como tapiz de sala, carta de pergamino, muerte y coronación como escena, tres imágenes de clímax.
+- Música procedural (Web Audio): una frase que se mueve sobre un fondo bajo, no un MP3. Se apaga y se enciende desde el trono.
 
 ## Modos
 
@@ -32,10 +51,36 @@ No requiere instalación. Guarda en `localStorage` y se puede instalar como PWA.
 
 ## Archivos
 
-- `index.html` + `style.css` — interfaz
-- `content.js` — constantes, consejeros, logros, finales
-- `cards-core.js` / `cards-arcs.js` — el mazo
-- `audio.js` — camas y stingers (Web Audio)
-- `game.js` — motor
-- `img/` — retratos, dorso de carta y escenas de clímax
-- `manifest.webmanifest` + `sw.js` — PWA
+| Archivo | Rol |
+|---|---|
+| `index.html` / `corona-de-ceniza-jugar.html` | Interfaz (mantenerlas iguales) |
+| `style.css` | Mesa, pergamino, sala |
+| `content.js` | Constantes, consejeros, logros, finales |
+| `cards-core.js` / `cards-arcs.js` | El mazo |
+| `audio.js` | Camas, frase y stingers (Web Audio) |
+| `game.js` | Motor, guardado, mute |
+| `img/` | Retratos, dorso, clímax, muerte, coronación |
+| `manifest.webmanifest` + `sw.js` | PWA |
+
+Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferencia de música también queda en `corona-de-ceniza-music`.
+
+## Notas honestas
+
+- Los retratos y las escenas son arte generado para esta corte, no pinturas licenciadas. El hueco de la carta es una franja ancha (cara y hombros), no el óleo entero.
+- La música no es una orquesta grabada: es una melodía marcada, original, hecha con osciladores. Por eso a veces cansa; por eso el jugador decide si suena.
+- Chrome (y otros) no sueltan el audio hasta el primer clic. Fundar, continuar o tocar ♪ basta.
+- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.10` al momento de escribir esto).
+
+Al publicar un cambio de interfaz o de motor: bump de `style.css?v=` / `audio.js?v=` / `game.js?v=` en **los dos** HTML, bump de `CACHE` en `sw.js`, y una fila nueva arriba de la bitácora.
+
+## Bitácora de funcionalidad
+
+Qué se subió a `main`, cuándo y con qué commit. Lo más nuevo va arriba. Los merge de PR se anotan en la misma fila que el trabajo.
+
+| Fecha | Commit | Cómo llegó | Qué se puede hacer desde entonces |
+|---|---|---|---|
+| 28 ago 2026 | [`0ab1a0a`](https://github.com/DonMAriando/Crown-of-Ashes/commit/0ab1a0a) | Push a `main` | Silenciar o devolver la melodía de corte desde el trono (♪ o `M`). Al reactivar, la frase vuelve; ya no queda el zumbido fijo. La carta no se congela al guardar a mitad de un swipe. La sala usa el dorso como tapiz; la carta tiene grano de pergamino. |
+| 28 ago 2026 | [`d3fc29b`](https://github.com/DonMAriando/Crown-of-Ashes/commit/d3fc29b) | [PR #3](https://github.com/DonMAriando/Crown-of-Ashes/pull/3) `presencia-valoria` | Doce retratos de consejeros, dorso de carta, muerte y coronación como escena, tres clímax de traición, partitura Web Audio (camas y stingers). |
+| 28 ago 2026 | [`89ce443`](https://github.com/DonMAriando/Crown-of-Ashes/commit/89ce443) | [PR #2](https://github.com/DonMAriando/Crown-of-Ashes/pull/2) `tres-capas-valoria` | Tres arcos de traición (copa, protocolo, correo) que pueden matar con los pilares en pie. Una daga avisada por corona; el heredero hereda al asesino. |
+| 28 ago 2026 | [`3c8a175`](https://github.com/DonMAriando/Crown-of-Ashes/commit/3c8a175) | [PR #1](https://github.com/DonMAriando/Crown-of-Ashes/pull/1) `tres-capas-valoria` | Las tres capas: tutorial, ~200 cartas, arcos largos, sucesión con memoria, Códice y mapa, PWA, fundador que conserva nombre y género. |
+| 28 ago 2026 | [`4714179`](https://github.com/DonMAriando/Crown-of-Ashes/commit/4714179) | Primer commit | Prototipo jugable: swipe binario, cuatro pilares, dinastía, HTML de mesa. |
