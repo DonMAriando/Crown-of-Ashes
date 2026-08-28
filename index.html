@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0c12" />
+  <title>Corona de Ceniza — Decisiones de una Dinastía</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <button id="brandBtn" class="brand" aria-label="Abrir menú">
+        <span class="brand-crown">♜</span>
+        <span><strong>Corona de Ceniza</strong><small id="reignLabel">Reinado I</small></span>
+      </button>
+      <div class="year-wrap">
+        <span id="rulerName">—</span>
+        <strong id="yearLabel">Año 1</strong>
+      </div>
+      <button id="menuBtn" class="icon-btn" aria-label="Menú">☰</button>
+    </header>
+
+    <section class="stats" aria-label="Estado del reino">
+      <div class="stat" data-stat="pueblo"><div class="stat-head"><span>♟</span><b>Pueblo</b><em id="puebloText">50</em></div><div class="meter"><i id="puebloBar"></i></div></div>
+      <div class="stat" data-stat="tesoro"><div class="stat-head"><span>◆</span><b>Tesoro</b><em id="tesoroText">50</em></div><div class="meter"><i id="tesoroBar"></i></div></div>
+      <div class="stat" data-stat="ejercito"><div class="stat-head"><span>⚔</span><b>Ejército</b><em id="ejercitoText">50</em></div><div class="meter"><i id="ejercitoBar"></i></div></div>
+      <div class="stat" data-stat="saber"><div class="stat-head"><span>✦</span><b>Saber</b><em id="saberText">50</em></div><div class="meter"><i id="saberBar"></i></div></div>
+    </section>
+
+    <main class="game-stage">
+      <div class="omens" id="omens"></div>
+      <div class="choice-preview left" id="leftPreview"><span>←</span><b id="leftText">No</b><small id="leftEffects"></small></div>
+      <div class="choice-preview right" id="rightPreview"><b id="rightText">Sí</b><span>→</span><small id="rightEffects"></small></div>
+
+      <div class="card-stack" id="cardStack">
+        <div class="ghost-card back-2"></div>
+        <div class="ghost-card back-1"></div>
+        <article class="card" id="card" tabindex="0" aria-live="polite">
+          <div class="card-topline"><span id="cardTag">CORTE</span><span id="rarityTag">COMÚN</span></div>
+          <div class="portrait" id="portrait"><div id="portraitGlyph">♛</div><span id="advisorMood"></span></div>
+          <div class="speaker"><strong id="speakerName">Consejera</strong><small id="speakerTitle">del reino</small></div>
+          <p id="cardText">Cargando el destino…</p>
+          <div class="card-footer"><span id="chainHint"></span><span class="drag-hint">Arrastrá o usá ← →</span></div>
+        </article>
+      </div>
+
+      <div class="desktop-actions">
+        <button id="leftBtn" class="choice-btn no"><span>←</span><b id="leftBtnText">Rechazar</b></button>
+        <button id="rightBtn" class="choice-btn yes"><b id="rightBtnText">Aceptar</b><span>→</span></button>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <button id="chronicleBtn">▤ Crónica <span id="chronicleCount">0</span></button>
+      <div class="legacy-chip" title="Legado dinástico"><span>✧</span><b id="legacyValue">0</b></div>
+      <button id="codexBtn">⌘ Códice</button>
+    </footer>
+  </div>
+
+  <div id="toastLayer" class="toast-layer" aria-live="polite"></div>
+
+  <dialog id="startDialog" class="modal start-modal">
+    <div class="modal-scroll">
+      <div class="sigil">♜</div>
+      <p class="eyebrow">UNA CRÓNICA PROCEDURAL</p>
+      <h1>Corona de Ceniza</h1>
+      <p class="lead">Goberná Valdoria a través de generaciones. Cada decisión deja una cicatriz; cada muerte, una herencia.</p>
+      <div class="feature-grid">
+        <div><b>∞</b><span>Eventos combinatorios y RNG adaptativo</span></div>
+        <div><b>⌛</b><span>Consecuencias diferidas durante años</span></div>
+        <div><b>◇</b><span>Secretos y arcos que cruzan reinados</span></div>
+        <div><b>✧</b><span>Legado, logros y desbloqueos persistentes</span></div>
+      </div>
+      <label class="field">Nombre de la dinastía<input id="dynastyInput" maxlength="22" placeholder="Ej. de Valdoria" /></label>
+      <label class="field">Semilla del mundo <span>(opcional)</span><input id="seedInput" maxlength="28" placeholder="vacío = aleatoria" /></label>
+      <label class="field">Modo<select id="modeSelect"><option value="normal">Crónica — experiencia equilibrada</option><option value="relaxed">Consejo Real — más indulgente</option><option value="harsh">Corona de Hierro — consecuencias severas</option><option value="chaos">Oráculo Roto — RNG salvaje</option></select></label>
+      <button id="startBtn" class="primary">Fundar la dinastía</button>
+      <button id="continueBtn" class="secondary hidden">Continuar partida guardada</button>
+      <p class="tiny">La partida se guarda automáticamente en este navegador.</p>
+    </div>
+  </dialog>
+
+  <dialog id="menuDialog" class="modal side-modal">
+    <div class="modal-head"><div><p class="eyebrow">CORONA DE CENIZA</p><h2>Consejo privado</h2></div><button class="close-btn" data-close="menuDialog">×</button></div>
+    <div class="menu-list">
+      <button id="resumeBtn"><span>▶</span><div><b>Continuar</b><small>Volver al trono</small></div></button>
+      <button id="saveBtn"><span>▣</span><div><b>Guardar</b><small>Forzar guardado local</small></div></button>
+      <button id="exportBtn"><span>⇩</span><div><b>Exportar partida</b><small>Descargar un archivo JSON</small></div></button>
+      <button id="importBtn"><span>⇧</span><div><b>Importar partida</b><small>Cargar un archivo JSON</small></div></button>
+      <input id="importFile" type="file" accept="application/json" hidden />
+      <button id="newGameBtn" class="danger"><span>↻</span><div><b>Nueva dinastía</b><small>Reiniciar progreso de esta crónica</small></div></button>
+    </div>
+    <div class="settings-box">
+      <label><span>Sonido</span><input id="soundToggle" type="checkbox" checked /></label>
+      <label><span>Mostrar magnitud aproximada</span><input id="hintToggle" type="checkbox" checked /></label>
+      <div class="seed-readout"><span>Semilla</span><code id="seedReadout">—</code></div>
+    </div>
+  </dialog>
+
+  <dialog id="chronicleDialog" class="modal wide-modal">
+    <div class="modal-head"><div><p class="eyebrow">MEMORIA DEL REINO</p><h2>Crónica</h2></div><button class="close-btn" data-close="chronicleDialog">×</button></div>
+    <div id="chronicleList" class="chronicle-list"></div>
+  </dialog>
+
+  <dialog id="codexDialog" class="modal wide-modal">
+    <div class="modal-head"><div><p class="eyebrow">PROGRESO DINÁSTICO</p><h2>Códice</h2></div><button class="close-btn" data-close="codexDialog">×</button></div>
+    <div class="tabs"><button class="tab active" data-tab="achievements">Logros</button><button class="tab" data-tab="legacy">Legado</button><button class="tab" data-tab="advisors">Consejeros</button><button class="tab" data-tab="secrets">Secretos</button><button class="tab" data-tab="stats">Estadísticas</button></div>
+    <div id="codexContent" class="codex-content"></div>
+  </dialog>
+
+  <dialog id="deathDialog" class="modal death-modal">
+    <div class="modal-scroll">
+      <p class="eyebrow">EL REINADO HA TERMINADO</p>
+      <div class="death-icon" id="deathIcon">♚</div>
+      <h2 id="deathTitle">La corona cae</h2>
+      <p id="deathText" class="lead"></p>
+      <div class="death-stats"><div><span>Años</span><b id="deathYears">0</b></div><div><span>Decisiones</span><b id="deathDecisions">0</b></div><div><span>Legado ganado</span><b id="deathLegacy">0</b></div></div>
+      <div id="deathUnlocks" class="unlock-list"></div>
+      <button id="nextReignBtn" class="primary">Coronar al heredero</button>
+    </div>
+  </dialog>
+
+  <dialog id="endingDialog" class="modal start-modal">
+    <div class="modal-scroll"><div class="sigil">✦</div><p class="eyebrow">DESTINO DE VALDORIA</p><h2 id="endingTitle">Final</h2><p id="endingText" class="lead"></p><div id="endingSummary" class="ending-summary"></div><button id="endingContinueBtn" class="primary">Seguir jugando en modo Crónica</button></div>
+  </dialog>
+
+  <script src="game.js"></script>
+</body>
+</html>
