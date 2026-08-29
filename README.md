@@ -81,6 +81,7 @@ Qué se subió a `main`, cuándo y con qué commit. Lo más nuevo va arriba. Los
 
 | Fecha | Commit | Cómo llegó | Qué se puede hacer desde entonces |
 |---|---|---|---|
+| 29 ago 2026 | [`8b0b3db`](https://github.com/DonMAriando/Crown-of-Ashes/commit/8b0b3db) | Push a `main` | Salón de piedra propio (`img/hall.jpg`); el dorso queda en el mazo. Pilares y placas de elección opacos sobre la nave. Ocho camas Suno en `musica/` (coronación, corte, invierno, peste, guerra, vacío, conspiración, muerte). El ♪ corta solo las camas; pasar cartas no reinicia la pista. |
 | 28 ago 2026 | [`0ab1a0a`](https://github.com/DonMAriando/Crown-of-Ashes/commit/0ab1a0a) | Push a `main` | Silenciar o devolver la melodía de corte desde el trono (♪ o `M`). Al reactivar, la frase vuelve; ya no queda el zumbido fijo. La carta no se congela al guardar a mitad de un swipe. La sala usa el dorso como tapiz; la carta tiene grano de pergamino. |
 | 28 ago 2026 | [`d3fc29b`](https://github.com/DonMAriando/Crown-of-Ashes/commit/d3fc29b) | [PR #3](https://github.com/DonMAriando/Crown-of-Ashes/pull/3) `presencia-valoria` | Doce retratos de consejeros, dorso de carta, muerte y coronación como escena, tres clímax de traición, partitura Web Audio (camas y stingers). |
 | 28 ago 2026 | [`89ce443`](https://github.com/DonMAriando/Crown-of-Ashes/commit/89ce443) | [PR #2](https://github.com/DonMAriando/Crown-of-Ashes/pull/2) `tres-capas-valoria` | Tres arcos de traición (copa, protocolo, correo) que pueden matar con los pilares en pie. Una daga avisada por corona; el heredero hereda al asesino. |
