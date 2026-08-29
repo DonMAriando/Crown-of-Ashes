@@ -853,7 +853,7 @@ function ensureAudio(){
 function tuneDrone(){
   if(typeof Score==='undefined')return;
   try{
-    if(!state){Score.setBed('court',true);return}
+    if(!state){Score.setBed('coronation',musicEnabled());return}
     Score.tick(state);
   }catch(err){console.error(err)}
 }

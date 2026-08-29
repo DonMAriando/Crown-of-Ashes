@@ -1,4 +1,4 @@
-const CACHE = 'corona-de-ceniza-v2.10';
+const CACHE = 'corona-de-ceniza-v2.17';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './game.js',
   './manifest.webmanifest',
   './icon.svg',
+  './img/hall.jpg',
   './img/card-back.jpg',
   './img/scene-death.jpg',
   './img/scene-coronation.jpg',
@@ -27,7 +28,15 @@ const ASSETS = [
   './img/advisor-naia.jpg',
   './img/advisor-garrik.jpg',
   './img/advisor-lupo.jpg',
-  './img/advisor-ferran.jpg'
+  './img/advisor-ferran.jpg',
+  './musica/court.opus',
+  './musica/winter.opus',
+  './musica/plague.opus',
+  './musica/war.opus',
+  './musica/void.opus',
+  './musica/plot.opus',
+  './musica/death.opus',
+  './musica/coronation.opus'
 ];
 
 self.addEventListener('install', event => {

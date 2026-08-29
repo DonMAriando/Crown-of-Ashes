@@ -26,7 +26,7 @@ La partida se guarda en este navegador (`localStorage`). No requiere instalació
 | Ayuda | `?` |
 | Deshacer | `Z` (solo modo Consejo Real, una vez por reinado) |
 
-El botón ♪ corta solo la melodía de corte. Los toques al deslizar, sellar o consultar siguen, si el sonido está prendido.
+El botón ♪ corta solo las camas. Los toques al deslizar, sellar o consultar siguen, si el sonido está prendido.
 
 ## Qué hay ahora
 
@@ -37,8 +37,9 @@ El botón ♪ corta solo la melodía de corte. Los toques al deslizar, sellar o 
 - El reino se hereda: obras, edictos, facciones y vecinos no vuelven a 50/50.
 - Edad, sucesor nombrado, muerte natural, finales que pueden sellar la crónica.
 - Códice con mapa, anales exportables, legado con leyes de casa.
-- Retratos de corte, dorso de carta como tapiz de sala, carta de pergamino, muerte y coronación como escena, tres imágenes de clímax.
-- Música procedural (Web Audio): una frase que se mueve sobre un fondo bajo, no un MP3. Se apaga y se enciende desde el trono.
+- Retratos de corte, salón de piedra propio (el dorso queda en el mazo), carta de pergamino, muerte y coronación como escena, tres imágenes de clímax.
+- Mesa leíble sobre la nave: pilares opacos y placas de elección, no texto al 20% sobre la piedra.
+- Ocho camas de Suno en `musica/` (Opus, con fallback a MP3): menú de coronación, corte, invierno, peste, guerra, vacío, conspiración y un stinger de muerte. El ♪ las apaga; pasar cartas no reinicia la pista.
 
 ## Modos
 
@@ -57,9 +58,10 @@ El botón ♪ corta solo la melodía de corte. Los toques al deslizar, sellar o 
 | `style.css` | Mesa, pergamino, sala |
 | `content.js` | Constantes, consejeros, logros, finales |
 | `cards-core.js` / `cards-arcs.js` | El mazo |
-| `audio.js` | Camas, frase y stingers (Web Audio) |
+| `audio.js` | Camas HTML (`musica/*.opus`) y toques Web Audio |
+| `musica/` | Camas de Suno (ver `musica/CAMAS.md`) |
 | `game.js` | Motor, guardado, mute |
-| `img/` | Retratos, dorso, clímax, muerte, coronación |
+| `img/` | Salón, retratos, dorso, clímax, muerte, coronación |
 | `manifest.webmanifest` + `sw.js` | PWA |
 
 Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferencia de música también queda en `corona-de-ceniza-music`.
@@ -67,9 +69,9 @@ Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferenci
 ## Notas honestas
 
 - Los retratos y las escenas son arte generado para esta corte, no pinturas licenciadas. El hueco de la carta es una franja ancha (cara y hombros), no el óleo entero.
-- La música no es una orquesta grabada: es una melodía marcada, original, hecha con osciladores. Por eso a veces cansa; por eso el jugador decide si suena.
+- Las camas son pistas Opus en `musica/` (Suno). Si el navegador no reproduce Opus, busca el mismo nombre en MP3. Los toques de las cartas siguen en Web Audio. El botón ♪ corta solo las camas.
 - Chrome (y otros) no sueltan el audio hasta el primer clic. Fundar, continuar o tocar ♪ basta.
-- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.10` al momento de escribir esto).
+- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.17` al momento de escribir esto).
 
 Al publicar un cambio de interfaz o de motor: bump de `style.css?v=` / `audio.js?v=` / `game.js?v=` en **los dos** HTML, bump de `CACHE` en `sw.js`, y una fila nueva arriba de la bitácora.
 
