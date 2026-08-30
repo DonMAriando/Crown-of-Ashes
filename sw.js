@@ -1,4 +1,4 @@
-const CACHE = 'corona-de-ceniza-v2.18';
+const CACHE = 'corona-de-ceniza-v2.19';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
   './cards-core.js',
   './cards-arcs.js',
   './audio.js',
+  './fx.js',
   './game.js',
   './manifest.webmanifest',
   './icon.svg',

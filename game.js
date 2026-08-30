@@ -578,6 +578,7 @@ function choose(side,opts={}){
   state.busy=true;
   try{
     sfx('swipe',side);
+    if(typeof CourtFx!=='undefined')CourtFx.swipe(side);
     if(state.mode==='relaxed'&&!state.undoUsed)state.snapshot=deepClone({...state,currentCard:card,snapshot:null,busy:false});
     const realized=applyEffects(choice);
     if(card.place&&side==='right')rememberPlace(card.place,card.work);
@@ -702,6 +703,7 @@ function endReign(stat,high){
   if(nextBtn)nextBtn.textContent=minor?`Abrir la regencia de ${state.heir.name}`:`Coronar a ${state.heir.name}`;
   $('#deathUnlocks').innerHTML=earned>=4?'<div class="unlock">✧ Tu largo reinado fortalece el legado de la dinastía.</div>':'';
   if(el.deathArt){el.deathArt.src=deathArtFor(stat);el.deathArt.alt=stat==='betrayal'?'La daga':'El fin del reinado'}
+  if(typeof CourtFx!=='undefined')CourtFx.death();
   $('#deathDialog').showModal();saveAll();
   sfx('death');
 }
@@ -735,6 +737,7 @@ function inheritKingdom(){
   }
 }
 function nextReign(){
+  if(typeof CourtFx!=='undefined')CourtFx.lift();
   $('#deathDialog').close();
   const heir=ensureHeir(true);
   state.reign++;state.reignYear=1;state.reignDecisions=0;state.guardUsed=false;state.undoUsed=false;state.snapshot=null;state.consulted=false;
@@ -813,7 +816,9 @@ function renderCard(){
   const canConsult=canUseConsult(c);
   el.consultBtn.disabled=!canConsult;
   discoverAdvisor(c.advisor);
-  if(!reduceMotionOn()){void el.card.offsetWidth;el.card.classList.add('deal')}
+  const stack=$('#cardStack');
+  if(stack){stack.classList.remove('dealing');void stack.offsetWidth;if(!reduceMotionOn())stack.classList.add('dealing')}
+  if(!reduceMotionOn()){void el.card.offsetWidth;el.card.classList.add('deal');if(typeof CourtFx!=='undefined')CourtFx.deal()}
   requestAnimationFrame(()=>el.card.style.transition='transform .18s, opacity .18s');
 }
 function flexLabel(label,side){
@@ -864,6 +869,10 @@ function renderHeader(){
   if(hasFlag('void_active')||hasFlag('void_door'))document.body.classList.add('omen-void');
   document.body.classList.toggle('reduce-motion',!!state.settings.reduceMotion);
   applyHouse();renderOmens();renderWhisper();tuneDrone();
+  if(typeof CourtFx!=='undefined'){
+    CourtFx.setQuiet(reduceMotionOn());
+    CourtFx.setMood(hasFlag('plague_active')?'plague':(hasFlag('war_active')||hasFlag('mutiny_on'))?'war':(hasFlag('void_active')||hasFlag('void_door'))?'void':'');
+  }
 }
 function heirHudLine(){
   const h=state.heir;
@@ -1024,6 +1033,7 @@ function startNew(opts={}){
   const meta=loadMeta();
   const house={color:$('#colorInput').value||'#c6a45b',motto:$('#mottoInput').value.trim(),founder:$('#founderInput').value.trim()};
   state=initialState(seed,dynasty,mode,meta,house);
+  if(typeof CourtFx!=='undefined')CourtFx.lift();
   rng=new RNG(seed);state.rulerGender=pickGender();applyStartPerks();setRuler();applyHouse();saveAll();
   $('#startDialog').close();renderAll();dealCard();ensureAudio();tuneDrone();
   toast(opts.daily?'Desafío del día':'La crónica comienza',`${state.ruler} recibe la Corona de Ceniza.`);
@@ -1196,6 +1206,7 @@ function registerPWA(){if('serviceWorker' in navigator)navigator.serviceWorker.r
 
 function boot(){
   cacheEls();bind();syncMusicBtn();
+  if(typeof CourtFx!=='undefined')CourtFx.init();
   const daily=parseURL();
   const has=!!(localStorage.getItem(SAVE_KEY)||localStorage.getItem(SAVE_KEY_V1));
   $('#continueBtn').classList.toggle('hidden',!has);

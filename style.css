@@ -15,8 +15,9 @@ body.omen-plague{--season-tint:rgba(70,110,80,.28)}
 body.omen-war{--season-tint:rgba(120,40,40,.22)}
 body.omen-void{--season-tint:rgba(60,40,90,.32)}
 .kingdom-bg{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;background:#07070b}
-.kingdom-bg:before{content:"";position:absolute;inset:0;background:url('img/hall.jpg?v=2') center 40%/cover no-repeat;filter:saturate(.92) brightness(.94) contrast(1.04)}
-.kingdom-bg:after{content:"";position:absolute;inset:0;background:
+.kingdom-bg:before{content:"";position:absolute;inset:0;z-index:0;background:url('img/hall.jpg?v=2') center 40%/cover no-repeat;filter:saturate(.92) brightness(.94) contrast(1.04);transition:filter .7s ease}
+.hall-candle{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 48vmin 40vmin at var(--cx,50%) var(--cy,44%),rgba(255,214,140,.22) 0%,rgba(255,186,96,.07) 40%,transparent 72%);mix-blend-mode:soft-light}
+.kingdom-bg:after{content:"";position:absolute;inset:0;z-index:2;background:
   radial-gradient(ellipse 34% 50% at 50% 52%,rgba(7,7,11,.42) 0%,rgba(7,7,11,.12) 46%,transparent 72%),
   linear-gradient(var(--season-tint),var(--season-tint));transition:background .8s ease}
 .app{position:relative;z-index:1;min-height:100vh;max-width:1080px;margin:auto;display:grid;grid-template-rows:auto auto 1fr auto;padding:0 22px}
@@ -63,9 +64,10 @@ button{font:inherit}
 .whisper{min-height:18px;margin:28px 0 0;color:#8a8494;font-size:13px;font-style:italic;text-align:center;max-width:520px}
 .card-stack{position:relative;width:min(390px,88vw);height:490px;perspective:1200px}
 .ghost-card,.card{position:absolute;inset:0;border-radius:24px}
-.ghost-card{background:#cfc4af url('img/card-back.jpg') center/cover;border:1px solid #8d816e}
+.ghost-card{background:#cfc4af url('img/card-back.jpg') center/cover;border:1px solid #8d816e;transition:transform .36s ease,opacity .36s}
 .back-2{transform:translateY(16px) scale(.94);opacity:.22}
 .back-1{transform:translateY(8px) scale(.97);opacity:.43}
+.card-stack.dealing .back-1{transform:translateY(3px) scale(.988);opacity:.58}
 .card{background:
   radial-gradient(ellipse at 50% 0,rgba(255,246,220,.35),transparent 42%),
   linear-gradient(145deg,#efe4cc 0%,#e4d3b0 48%,#d7c19a 100%);
@@ -81,7 +83,10 @@ button{font:inherit}
 .card .swipe-label{z-index:4}
 .card.dragging{cursor:grabbing;transition:none!important}
 .card.deal{animation:dealIn .4s cubic-bezier(.2,.85,.2,1)}
-@keyframes dealIn{from{transform:translateY(36px) rotate(1.6deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes dealIn{from{transform:translateY(28px) scale(.93) rotate(2.1deg);opacity:0}to{transform:none;opacity:1}}
+#courtFx{position:fixed;inset:0;z-index:5;pointer-events:none}
+body.hall-dim .kingdom-bg:before{filter:saturate(.5) brightness(.4) contrast(1.06)}
+body.hall-dim .hall-candle{opacity:.18}
 .card.tint-left{box-shadow:var(--shadow),inset 0 0 0 3px rgba(182,84,84,.45)}
 .card.tint-right{box-shadow:var(--shadow),inset 0 0 0 3px rgba(106,154,121,.45)}
 .swipe-label{position:absolute;top:46%;left:18px;right:18px;opacity:0;pointer-events:none;z-index:4;text-align:center;transition:opacity .12s}
@@ -297,9 +302,14 @@ button{font:inherit}
   .card p{font-size:16px}
   .desktop-actions{margin-top:18px}
 }
+@media(hover:none){
+  .hall-candle{animation:candleBreathe 5.6s ease-in-out infinite}
+}
+@keyframes candleBreathe{0%,100%{opacity:.68}50%{opacity:1}}
 @media(prefers-reduced-motion:reduce){
   .card,.meter i,.toast,.fx-delta,.stat{animation:none!important;transition:none!important}
   .card.deal,.card.fly{animation:none;transition:opacity .2s}
+  .hall-candle{animation:none}
 }
 body.reduce-motion .card.deal{animation:none}
 
@@ -308,3 +318,4 @@ body.reduce-motion .meter i,
 body.reduce-motion .toast,
 body.reduce-motion .fx-delta,
 body.reduce-motion .stat{animation:none!important;transition:none!important}
+body.reduce-motion .hall-candle{animation:none;opacity:.82}
