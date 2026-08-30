@@ -47,7 +47,8 @@ function initialState(seed,dynasty,mode,meta,house){
     personality:{clemencia:0,razon:0},
     flags:[],edicts:[],places:{},
     persistent:{heirTrait:null,heirPeople:0,spouse:null,children:[],assassin:null,plotFace:null,plotsFoiled:0},
-    heir:null,guardUsed:false,undoUsed:false,tutorialDone:false,
+    heir:null,regent:null,lineage:[],reignMarks:[],lineageStartAge:22,
+    guardUsed:false,undoUsed:false,tutorialDone:false,
     relationships:Object.fromEntries(Object.keys(ADVISORS).map(k=>[k,0])),
     history:[],samples:[],recent:[],seen:{},onceSeen:[],delayed:[],forced:[],
     currentCard:null,season:0,agendaBias:null,lastAgenda:0,lastConsult:-99,consulted:false,
@@ -74,7 +75,7 @@ const el={};
 function cacheEls(){
   ['card','cardText','speakerName','speakerTitle','portraitGlyph','advisorMood','cardTag','rarityTag',
    'leftText','rightText','leftEffects','rightEffects','leftBtnText','rightBtnText','swipeLeftText','swipeRightText',
-   'rulerName','yearLabel','reignLabel','ageLabel','seasonLabel','omens','whisper','legacyValue','chronicleCount',
+   'rulerName','yearLabel','reignLabel','ageLabel','heirLabel','seasonLabel','omens','whisper','legacyValue','chronicleCount',
    'seedReadout','soundToggle','hintToggle','musicToggle','motionToggle','consultBtn','consultHint','cardEcho','fxLayer','portraitImg','deathArt','musicBtn']
     .forEach(id=>el[id]=$('#'+id));
 }
@@ -123,9 +124,17 @@ function epithetFor(gender,trait){
 function setRuler(fromHeir){
   if(fromHeir&&state.heir?.name){
     state.rulerGender=state.heir.gender||state.rulerGender;
-    state.rulerAge=clamp(state.heir.age||18,16,40);
+    state.rulerAge=Math.max(1,Math.round(state.heir.age||1));
     const epi=epithetFor(state.rulerGender,state.persistent.heirTrait);
     state.ruler=`${state.heir.name} ${epi}`;
+    if(state.rulerAge<16){
+      state.regent=pickRegent();
+      addFlag('regencia');
+      state.hidden.autoridad=clamp(state.hidden.autoridad-8,-100,150);
+    }else{
+      state.regent=null;
+      clearFlag('regencia');
+    }
   }else{
     const founder=(state.house?.founder||'').trim();
     if(founder&&state.reign===1){
@@ -139,19 +148,79 @@ function setRuler(fromHeir){
       state.ruler=`${nameFor(state.rulerGender)} ${epithetFor(state.rulerGender,state.persistent.heirTrait)}`;
       if(state.reign===1)state.rulerAge=rng.int(19,27);
     }
+    state.regent=null;
+    clearFlag('regencia');
   }
+  state.lineageStartAge=Math.round(state.rulerAge);
   if((state.meta.perks||[]).includes('primogenitura')&&!state.heir)ensureHeir(true);
   state.rngCounter=rng.counter;
 }
+function pickRegent(){
+  const ids=['ines','odon','elian','bruno'];
+  ids.sort((a,b)=>(state.relationships[b]||0)-(state.relationships[a]||0));
+  const id=ids[0];
+  return {advisor:id,name:ADVISORS[id].name,until:16};
+}
+function heirKin(h){
+  if(!h)return 'pariente';
+  if(h.kin==='pariente')return h.gender==='f'?'parienta de la casa':'pariente de la casa';
+  if(h.kin==='hija'||h.gender==='f')return 'hija';
+  return 'hijo';
+}
+function rememberChild(h){
+  if(!h?.name)return;
+  state.persistent.children=state.persistent.children||[];
+  const hit=state.persistent.children.find(c=>c.name===h.name);
+  if(hit){hit.age=h.age;hit.gender=h.gender||hit.gender;return}
+  state.persistent.children.push({name:h.name,gender:h.gender,age:h.age,kin:h.kin||heirKin(h)});
+}
 function ensureHeir(forceName){
-  if(state.heir?.name&&!forceName)return state.heir;
+  if(state.heir){
+    if(forceName&&!state.heir.name){
+      state.heir.name=nameFor(state.heir.gender);
+      state.heir.kin=state.heir.kin||heirKin(state.heir);
+      rememberChild(state.heir);
+    }
+    return state.heir;
+  }
   const g=rng.chance(.5)?'f':'m';
   const named=!!forceName||(state.meta.perks||[]).includes('primogenitura');
-  state.heir={name:named?nameFor(g):null,gender:g,age:Math.max(1,state.rulerAge-rng.int(16,22)),trait:state.persistent.heirTrait,people:state.persistent.heirPeople||0,alive:true};
+  const age=Math.max(1,state.rulerAge-rng.int(16,22));
+  state.heir={name:named?nameFor(g):null,gender:g,age,trait:state.persistent.heirTrait,people:state.persistent.heirPeople||0,alive:true,kin:g==='f'?'hija':'hijo'};
+  if(state.heir.name)rememberChild(state.heir);
   return state.heir;
 }
+function maybeSeedHeir(){
+  if(state.heir||state.rulerAge<22||state.reignDecisions<8)return;
+  ensureHeir(false);
+}
+function resolveSuccessor(){
+  if(state.heir?.alive!==false&&state.heir){
+    if(!state.heir.name){state.heir.name=nameFor(state.heir.gender);state.heir.kin=state.heir.kin||heirKin(state.heir);rememberChild(state.heir)}
+    return state.heir;
+  }
+  const kids=(state.persistent.children||[]).filter(k=>k.name);
+  if(kids.length){
+    const k=kids[0];
+    state.heir={name:k.name,gender:k.gender||'m',age:Math.max(1,Math.round(k.age||1)),trait:state.persistent.heirTrait,people:state.persistent.heirPeople||0,alive:true,kin:k.kin||heirKin(k)};
+    return state.heir;
+  }
+  const g=rng.chance(.5)?'f':'m';
+  state.heir={name:nameFor(g),gender:g,age:rng.int(16,36),trait:state.persistent.heirTrait,people:state.persistent.heirPeople||0,alive:true,kin:'pariente'};
+  return state.heir;
+}
+function markReign(label){
+  if(!label||!state)return;
+  state.reignMarks=state.reignMarks||[];
+  if(state.reignMarks.some(m=>m.label===label)||state.reignMarks.length>=6)return;
+  state.reignMarks.push({year:state.worldYear,reignYear:state.reignYear,label});
+}
 function hasFlag(f){return state.flags.includes(f)}
-function addFlag(f){if(f&&!hasFlag(f))state.flags.push(f)}
+function addFlag(f){
+  if(!f||hasFlag(f))return;
+  state.flags.push(f);
+  if(DETONANTES[f])markReign(DETONANTES[f]);
+}
 function clearFlag(f){state.flags=state.flags.filter(x=>x!==f)}
 function addEdict(name,year){if(!name)return;if(state.edicts.some(e=>e.name===name))return;state.edicts.push({name,year:year??state.worldYear});sfx('stamp')}
 function rememberPlace(place,work){
@@ -201,6 +270,9 @@ function cardWeight(card){
     if(state.agendaBias==='law'&&['ines','bruno','elian'].includes(card.advisor))w*=1.45;
     if(state.agendaBias==='street'&&['tala','roldan','lupo'].includes(card.advisor))w*=1.45;
   }
+  if(state.rulerAge>=40&&card.tags?.includes('dinastia'))w*=1.22;
+  if(state.rulerAge>=52&&card.id==='last-will')w*=1.7;
+  if(hasFlag('regencia')&&card.tags?.includes('regencia'))w*=2.4;
   if(state.mode==='chaos')w*=rng.next()*.9+.55;
   return w;
 }
@@ -243,7 +315,27 @@ function maybeUltimatum(){
   }
   return null;
 }
+function maybeCloseRegency(){
+  if(!state.regent||state.rulerAge<16)return;
+  const who=state.regent.name;
+  state.regent=null;
+  clearFlag('regencia');
+  addEdict('Fin de la regencia');
+  markReign('Fin de la regencia');
+  toast('Fin de la regencia',`${who} devuelve el sello. ${state.ruler.split(' ')[0]} firma solo.`);
+}
+function maybeQueueAgeDeath(){
+  if(state.rulerAge<64)return;
+  if(hasFlag('age_death_queued')||hasFlag('age_dying'))return;
+  if(state.delayed.some(d=>d.type==='age_death'))return;
+  const p=clamp((state.rulerAge-63)*0.045,0,.55);
+  if(state.rulerAge>=78||rng.chance(p)){
+    addFlag('age_death_queued');
+    state.delayed.push({type:'age_death',at:state.worldYear,created:state.worldYear,interrupt:true});
+  }
+}
 function getNextCard(){
+  maybeQueueAgeDeath();
   if(!state.tutorialDone&&state.reign===1){
     const next=TUTORIAL.find(c=>!state.onceSeen.includes(c.id));
     if(next)return deepClone(next);
@@ -307,10 +399,17 @@ function runSpecial(id){
     if(rng.chance(chance)){addFlag('war_peace');clearFlag('war_active');state.stats.pueblo=clamp(state.stats.pueblo+8,0,100);state.stats.tesoro=clamp(state.stats.tesoro+5,0,100);toast('Paz de Ceniza','La conferencia tuvo éxito. Tres firmas terminaron una guerra que parecía interminable.');addSecret('La tinta que detuvo tres ejércitos')}
     else{state.stats.ejercito=clamp(state.stats.ejercito-10,0,100);state.stats.pueblo=clamp(state.stats.pueblo-6,0,100);toast('La mesa se rompió','Un delegado fue asesinado durante la negociación. La guerra continúa.')}
   }
-  if(id==='nameHeirSelf'){ensureHeir(true);state.heir.name=state.ruler.split(' ')[0];toast('Nombre del heredero',state.heir.name+' llevará tu nombre.')}
-  if(id==='nameHeirPeople'){ensureHeir(true);state.heir.name=nameFor(state.heir.gender);toast('Nombre del heredero','La plaza eligió a '+state.heir.name+'.')}
+  if(id==='nameHeirSelf'){ensureHeir(true);state.heir.name=state.ruler.split(' ')[0];state.heir.kin=heirKin(state.heir);rememberChild(state.heir);markReign('Heredero nombrado');toast('Nombre del heredero',state.heir.name+' llevará tu nombre.')}
+  if(id==='nameHeirPeople'){ensureHeir(true);state.heir.name=nameFor(state.heir.gender);state.heir.kin=heirKin(state.heir);rememberChild(state.heir);markReign('Heredero nombrado');toast('Nombre del heredero','La plaza eligió a '+state.heir.name+'.')}
   if(id==='marrySelf'){state.persistent.spouse=state.persistent.spouse||nameFor(state.rulerGender==='f'?'m':'f');addFlag('casado');addEdict('Matrimonio real')}
-  if(id==='secondChild'){addFlag('segundo_hijo');state.persistent.children=(state.persistent.children||[]).concat([{name:nameFor(rng.chance(.5)?'f':'m')}]);toast('Segunda cuna','La corte ya discute primogenitura.')}
+  if(id==='secondChild'){
+    const g=rng.chance(.5)?'f':'m';
+    const child={name:nameFor(g),gender:g,age:0,kin:g==='f'?'hija':'hijo'};
+    addFlag('segundo_hijo');
+    state.persistent.children=(state.persistent.children||[]).concat([child]);
+    toast('Segunda cuna',`${child.name} nace. La corte ya discute primogenitura.`);
+  }
+  if(id==='ageDeath'){addFlag('age_dying')}
   if(id==='agendaLaw'){state.agendaBias='law';state.lastAgenda=state.decision;toast('Agenda','Inés, Bruno y Elián tendrán más oído.')}
   if(id==='agendaStreet'){state.agendaBias='street';state.lastAgenda=state.decision;toast('Agenda','Tala, Roldán y Lupo tendrán más oído.')}
   if(id==='plotLook')plotLook();
@@ -429,7 +528,6 @@ function scheduleWorldEvents(){
   if(state.season===1&&state.hidden.reservas<2&&rng.chance(.1))state.stats.pueblo=clamp(state.stats.pueblo-2,0,100);
   for(const k of FACTION_KEYS){if(state.factions[k]<25&&rng.chance(.05))state.stats.pueblo=clamp(state.stats.pueblo-1,0,100)}
   if(state.neighbors.norte<20&&rng.chance(.06))state.stats.ejercito=clamp(state.stats.ejercito-2,0,100);
-  if(state.heir&&rng.chance(.08))state.heir.age+=1;
   maybeStartPlot();
 }
 function updateHiddenMilestones(){
@@ -453,6 +551,7 @@ function checkSpecialEnding(){
       state.endingShown.push(e.id);
       if(!state.meta.endings.includes(e.id))state.meta.endings.push(e.id);
       if(e.pack&&!(state.meta.packs||[]).includes(e.pack))state.meta.packs.push(e.pack);
+      markReign(e.title);
       if((state.meta.perks||[]).includes('cronista'))state.meta.legacy+=8;
       saveAll();showEnding(e);return true;
     }
@@ -485,7 +584,13 @@ function choose(side,opts={}){
     const years=card.years??1;
     state.decision++;state.reignDecisions++;state.meta.totalDecisions++;
     state.reignYear+=years;state.worldYear+=years;state.rulerAge+=years;
-    if(years>0){state.season=(state.season+years)%4;pulseYear()}
+    if(years>0){
+      if(state.heir)state.heir.age=(state.heir.age||1)+years;
+      (state.persistent.children||[]).forEach(c=>{c.age=(c.age||0)+years});
+      state.season=(state.season+years)%4;pulseYear();
+      if(state.rulerAge>=65)markReign('Corona larga');
+    }
+    maybeSeedHeir();maybeCloseRegency();maybeQueueAgeDeath();
     state.consulted=false;
     scheduleWorldEvents();updateHiddenMilestones();
     state.history.unshift({year:state.reignYear,world:state.worldYear,reign:state.reign,ruler:state.ruler,speaker:ADVISORS[card.advisor]?.name||'Destino',text:cardTextOf(card),choice:choice.label,effects:realized,annal:''});
@@ -539,10 +644,29 @@ function checkDeath(){
   return false;
 }
 function checkAgeDeath(){
-  if(state.rulerAge<64)return false;
-  const p=clamp((state.rulerAge-63)*0.045,0,.55);
-  if(state.rulerAge>=78||rng.chance(p)){endReign('age',false);return true}
+  if(hasFlag('age_dying')){endReign('age',false);return true}
   return false;
+}
+function causeLabel(stat,high){
+  if(stat==='age')return 'El cuerpo cedió';
+  if(stat==='betrayal')return 'La daga';
+  return `${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
+}
+function recordLineage(stat,high){
+  const heir=state.heir;
+  const fork=(state.persistent.children||[]).filter(k=>k.name&&k.name!==heir?.name).map(k=>({name:k.name,gender:k.gender,reason:hasFlag('crisis_active')||hasFlag('crisis_open')?'crisis dinástica':'segunda cuna'}));
+  state.lineage=state.lineage||[];
+  state.lineage.push({
+    reign:state.reign,name:state.ruler,gender:state.rulerGender,
+    startAge:Math.round(state.lineageStartAge||Math.max(1,state.rulerAge-state.reignYear+1)),
+    endAge:Math.round(state.rulerAge),years:state.reignYear,
+    worldFrom:Math.max(1,state.worldYear-state.reignYear+1),worldTo:state.worldYear,
+    death:stat,deathHigh:!!high,cause:causeLabel(stat,high),
+    heirName:heir?.name||'',heirAge:Math.max(1,Math.round(heir?.age||1)),heirGender:heir?.gender||'',
+    kin:heirKin(heir),events:(state.reignMarks||[]).slice(0,6),
+    fork:fork.length?fork:null,regency:!!state.regent||hasFlag('regencia')
+  });
+  state.reignMarks=[];
 }
 function rumorOfDead(){
   const clem=state.personality.clemencia||0;
@@ -557,7 +681,6 @@ function endReign(stat,high){
   state.meta.lifetimeDeaths[key]=(state.meta.lifetimeDeaths[key]||0)+1;
   const earned=Math.max(1,Math.floor(state.reignYear/8)+Math.floor(state.reignDecisions/18));
   state.meta.legacy+=earned;localStorage.setItem(META_KEY,JSON.stringify(state.meta));
-  checkAchievements();
   const kind=plotKind();
   const txt=stat==='betrayal'?rng.pick(deathReasons['betrayal_'+(kind||'gold')]||deathReasons.betrayal):stat==='age'?rng.pick(deathReasons.age):rng.pick(deathReasons[key]);
   $('#deathTitle').textContent=stat==='betrayal'?'La daga encontró el oficio':stat==='age'?'El cuerpo cedió':`${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
@@ -569,9 +692,14 @@ function endReign(stat,high){
   $('#deathIcon').textContent=stat==='betrayal'?'🗡':stat==='age'?'⌛':STAT_ICONS[stat];
   const works=state.edicts.slice(-6).map(e=>`<div class="unlock">Sobrevió: ${escapeHtml(e.name)}</div>`).join('')||'<div class="unlock">Ninguna obra nombrada sobrevive con claridad.</div>';
   $('#deathEdicts').innerHTML=works;
-  ensureHeir(true);
-  if(!state.heir.name)state.heir.name=nameFor(state.heir.gender);
-  $('#deathHeir').innerHTML=`<b>${escapeHtml(state.heir.name)}</b><span>Hered${state.heir.gender==='f'?'era':'ero'} de ${Math.max(1,Math.round(state.heir.age))} años. ${state.persistent.heirTrait?('Rasgo: '+state.persistent.heirTrait+'.'):'Todavía sin tutor claro.'}</span>`;
+  resolveSuccessor();
+  recordLineage(stat,high);
+  checkAchievements();
+  const years=Math.max(1,Math.round(state.heir.age));
+  const minor=years<16;
+  $('#deathHeir').innerHTML=`<b>${escapeHtml(state.heir.name)}</b><span>${heirKin(state.heir)}, ${years} años.${minor?' El Consejo abrirá una regencia.':''} ${state.persistent.heirTrait?('Rasgo: '+state.persistent.heirTrait+'.'):'Todavía sin tutor claro.'}</span>`;
+  const nextBtn=$('#nextReignBtn');
+  if(nextBtn)nextBtn.textContent=minor?`Abrir la regencia de ${state.heir.name}`:`Coronar a ${state.heir.name}`;
   $('#deathUnlocks').innerHTML=earned>=4?'<div class="unlock">✧ Tu largo reinado fortalece el legado de la dinastía.</div>':'';
   if(el.deathArt){el.deathArt.src=deathArtFor(stat);el.deathArt.alt=stat==='betrayal'?'La daga':'El fin del reinado'}
   $('#deathDialog').showModal();saveAll();
@@ -614,11 +742,16 @@ function nextReign(){
   const killer=state.persistent.assassin;
   state.flags=state.flags.filter(f=>!/^plot_/.test(f));
   if(killer?.kind)addFlag('shadow_'+killer.kind);
+  state.reignMarks=[];
+  ['age_dying','age_death_queued'].forEach(clearFlag);
+  state.delayed=state.delayed.filter(d=>d.type!=='age_death');
   setRuler(true);
   state.heir=null;state.currentCard=null;state.busy=false;
+  state.persistent.children=[];
   if((state.meta.perks||[]).includes('primogenitura'))ensureHeir(true);
   checkAchievements();saveAll();renderAll();dealCard();
-  toast('Nueva corona',killer?`${state.ruler} hereda un reino… y al que sirvió el vino.`:`${state.ruler} hereda un reino que recuerda.`);
+  const sucesor=state.regent?`${state.ruler} hereda; ${state.regent.name} firma hasta los dieciséis.`:killer?`${state.ruler} hereda un reino… y al que sirvió el vino.`:`${state.ruler} hereda un reino que recuerda.`;
+  toast('Nueva corona',sucesor);
 }
 
 function cardTextOf(c){
@@ -718,10 +851,11 @@ function renderHeader(){
   el.rulerName.textContent=state.ruler;
   el.yearLabel.textContent=`Año ${state.reignYear}`;
   el.ageLabel.textContent=`${Math.round(state.rulerAge)} años`;
+  if(el.heirLabel)el.heirLabel.textContent=heirHudLine();
   el.reignLabel.textContent=`Reinado ${roman(state.reign)} · ${state.dynasty}`;
   el.seasonLabel.textContent=SEASON_NAMES[state.season]||'Primavera';
   el.legacyValue.textContent=state.meta.legacy;
-  el.chronicleCount.textContent=state.history.length;
+  el.chronicleCount.textContent=(state.history||[]).filter(h=>h.reign===state.reign).length;
   el.seedReadout.textContent=state.seed;
   document.body.classList.remove('season-spring','season-summer','season-autumn','season-winter','omen-plague','omen-war','omen-void');
   document.body.classList.add('season-'+SEASON_KEYS[state.season]);
@@ -731,8 +865,17 @@ function renderHeader(){
   document.body.classList.toggle('reduce-motion',!!state.settings.reduceMotion);
   applyHouse();renderOmens();renderWhisper();tuneDrone();
 }
+function heirHudLine(){
+  const h=state.heir;
+  if(state.regent)return `Regencia · ${state.regent.name}`;
+  if(!h)return (state.rulerAge>=22&&state.reignDecisions>=8)?'Sin sucesor nombrado':'';
+  const years=Math.max(1,Math.round(h.age||1));
+  if(!h.name)return `${h.gender==='f'?'La niña':'El niño'} · ${years} años`;
+  return `${h.name} · ${years} años`;
+}
 function renderOmens(){
   const arr=[];
+  if(hasFlag('regencia')&&state.regent)arr.push([`♛ Regencia · ${state.regent.name}`,'']);
   if(hasFlag('plague_active'))arr.push(['⚕ Fiebre de Vidrio','urgent']);
   if(hasFlag('war_active'))arr.push(['⚔ Tres Banderas','urgent']);
   if(hasFlag('void_active'))arr.push(['☽ Estrella Negra','urgent']);
@@ -895,6 +1038,13 @@ function exportBook(){
     `Soberano actual: ${state.ruler}, año ${state.reignYear} del reinado ${roman(state.reign)}.`,
     `Semilla: ${state.seed}`,
     '',
+    '## Linaje',
+    ...((state.lineage||[]).length?state.lineage.map(r=>{
+      const ev=(r.events||[]).map(e=>e.label).join('; ')||'sin detonante nombrado';
+      const fork=(r.fork||[]).map(f=>`${f.name} (${f.reason})`).join(', ');
+      return `- ${r.name}, reinado ${roman(r.reign)}, ${r.years} años (${r.startAge}–${r.endAge}). ${r.cause}. Hereda ${r.heirName}, ${r.kin}, ${r.heirAge} años. ${ev}.${fork?' No tomaron la corona: '+fork+'.':''}`;
+    }):['- Todavía una sola corona.']),
+    '',
     '## Edictos y obras',
     ...(state.edicts.length?state.edicts.map(e=>`- ${e.name} (año mundial ${e.year})`):['- (ninguno)']),
     '',
@@ -907,7 +1057,9 @@ function exportBook(){
 
 function openChronicle(){
   const box=$('#chronicleList');
-  box.innerHTML=state.history.length?state.history.map(h=>`<div class="chronicle-item"><time>Año ${h.year}</time><div><p>${escapeHtml(h.annal||h.text)}</p><small>${escapeHtml(h.speaker)} · <b>${escapeHtml(h.choice)}</b></small></div></div>`).join(''):'<p class="lead">Todavía no hay decisiones registradas.</p>';
+  const rows=(state.history||[]).filter(h=>h.reign===state.reign);
+  const note='<p class="lead">Este reinado. El siglo está en el Códice, pestaña Linaje.</p>';
+  box.innerHTML=rows.length?note+rows.map(h=>`<div class="chronicle-item"><time>Año ${h.year}</time><div><p>${escapeHtml(h.annal||h.text)}</p><small>${escapeHtml(h.speaker)} · <b>${escapeHtml(h.choice)}</b></small></div></div>`).join(''):note+'<p class="lead">Todavía no hay decisiones registradas.</p>';
   $('#chronicleDialog').showModal();
 }
 function sparkSVG(){
@@ -931,8 +1083,21 @@ function mapSVG(){
     return `<path class="${cls}" data-id="${r.id}" d="${r.d}"><title>${r.name}</title></path>`;
   }).join('')}<text x="130" y="222" text-anchor="middle" fill="#8f899b" font-size="9" font-family="Georgia">Valdoria y sus orillas</text></svg>`;
 }
-function renderCodex(tab='achievements'){
+function lineageNodeHTML(r,living){
+  const ev=(r.events||[]).map(e=>`<span>${escapeHtml(e.label)}</span>`).join('')||(living?'<span>el reinado aún se escribe</span>':'<span>sin detonante nombrado</span>');
+  const pass=living?'':`<div class="lineage-pass">→ ${escapeHtml(r.heirName||'un pariente')}, ${escapeHtml(r.kin||'pariente')}, ${r.heirAge} años</div>`;
+  const fork=(r.fork||[]).map(f=>`<div class="lineage-fork">No tomó la corona: ${escapeHtml(f.name)} · ${escapeHtml(f.reason)}</div>`).join('');
+  const when=living?`Año ${r.years} · ${r.startAge} años`:`Reinado ${roman(r.reign)} · ${r.years} años · ${r.startAge}–${r.endAge} · ${escapeHtml(r.cause)}`;
+  return `<div class="lineage-node${living?' living':''}"><div class="lineage-crown" aria-hidden="true">${living?'♛':'♜'}</div><div><b>${escapeHtml(r.name)}</b><small>${when}${r.regency&&!living?' · hubo regencia':''}${living&&state.regent?' · regencia':''}</small><div class="lineage-events">${ev}</div>${pass}${fork}</div></div>`;
+}
+function renderCodex(tab='lineage'){
   $$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));const box=$('#codexContent');
+  if(tab==='lineage'){
+    const past=state.lineage||[];
+    const living={name:state.ruler,reign:state.reign,years:state.reignYear,startAge:Math.round(state.lineageStartAge||state.rulerAge),events:state.reignMarks||[],regency:!!state.regent};
+    const empty=past.length?'':'<p class="lead">Todavía una sola corona. El siglo se escribe al morir.</p>';
+    box.innerHTML=`<p class="lead">La fila de coronas. Los Anales guardan el año; esto, el siglo.</p>${empty}<div class="lineage">${past.map(r=>lineageNodeHTML(r,false)).join('')}${lineageNodeHTML(living,true)}</div>`;
+  }
   if(tab==='achievements')box.innerHTML=ACHIEVEMENTS.map(([id,t,d,i])=>`<div class="achievement ${state.meta.achievements.includes(id)?'unlocked':''}"><div class="badge">${state.meta.achievements.includes(id)?i:'?'}</div><div><b>${state.meta.achievements.includes(id)?t:'Logro oculto'}</b><small>${state.meta.achievements.includes(id)?d:'Seguí gobernando para descubrirlo.'}</small></div></div>`).join('');
   if(tab==='legacy')box.innerHTML=PERKS.map(([id,t,d,cost,icon])=>{const own=state.meta.perks?.includes(id),can=state.meta.legacy>=cost;return `<div class="achievement ${own?'unlocked':''}"><div class="badge">${icon}</div><div><b>${t}</b><small>${d}</small><span class="perk-cost">${own?'Adquirido':cost+' ✧'}</span></div><button class="perk-buy" data-perk="${id}" ${own||!can?'disabled':''}>${own?'Activo':'Adquirir'}</button></div>`}).join('');
   if(tab==='advisors')box.innerHTML=`<div class="advisor-grid">${Object.entries(ADVISORS).map(([id,a])=>{const seen=state.meta.discoveredAdvisors.includes(id);const r=relOf(id);const cls=seen?'':'locked';const mood=r>=18?'ally':r<=-18?'foe':'';const face=seen&&a.portrait?`<img class="advisor-face" src="${a.portrait}" alt="">`:'';return `<div class="advisor-cell ${cls} ${mood}">${face}<b>${seen?a.glyph+' '+a.name:'? Desconocido'}</b><small>${seen?a.title:'Todavía no llegó a tu corte.'}</small>${seen?`<span class="rel">Afinidad: ${r>0?'+':''}${r}${r>=18?' · aliado':r<=-18?' · enemigo':''}</span>`:''}</div>`}).join('')}</div>`;
@@ -952,7 +1117,7 @@ function renderCodex(tab='achievements'){
   }
   if(tab==='secrets')box.innerHTML=state.meta.secrets.length?state.meta.secrets.map(s=>`<div class="secret found"><b>✦ ${escapeHtml(s)}</b></div>`).join(''):'<p class="lead">Los secretos no se anuncian. Se encuentran.</p>';
   if(tab==='stats'){
-    const rows=[['Dinastía',state.dynasty],['Lema',state.house?.motto||'—'],['Años de historia',state.worldYear],['Reinados completados',state.meta.totalReigns],['Decisiones totales',state.meta.totalDecisions],['Mejor reinado',state.meta.bestReign+' años'],['Edad del soberano',Math.round(state.rulerAge)],['Clemencia / razón',`${state.personality.clemencia} / ${state.personality.razon}`],['Legado',state.meta.legacy+' ✧'],['Finales',`${state.meta.endings.length}/${SPECIAL_ENDINGS.length}`],['Cartas escritas',CARDS.length],['Consecuencias pendientes',state.delayed.length],['Corrupción',Math.round(state.hidden.corrupcion)],['Salud pública',Math.round(state.hidden.salud)],['Inteligencia',Math.round(state.hidden.inteligencia)],['Packs NG+',(state.meta.packs||[]).join(', ')||'—']];
+    const rows=[['Dinastía',state.dynasty],['Lema',state.house?.motto||'—'],['Años de historia',state.worldYear],['Coronas en el linaje',(state.lineage||[]).length],['Reinados completados',state.meta.totalReigns],['Decisiones totales',state.meta.totalDecisions],['Mejor reinado',state.meta.bestReign+' años'],['Edad del soberano',Math.round(state.rulerAge)],['Clemencia / razón',`${state.personality.clemencia} / ${state.personality.razon}`],['Legado',state.meta.legacy+' ✧'],['Finales',`${state.meta.endings.length}/${SPECIAL_ENDINGS.length}`],['Cartas escritas',CARDS.length],['Consecuencias pendientes',state.delayed.length],['Corrupción',Math.round(state.hidden.corrupcion)],['Salud pública',Math.round(state.hidden.salud)],['Inteligencia',Math.round(state.hidden.inteligencia)],['Packs NG+',(state.meta.packs||[]).join(', ')||'—']];
     box.innerHTML=sparkSVG()+rows.map(([a,b])=>`<div class="stat-table"><span>${a}</span><b>${escapeHtml(String(b))}</b></div>`).join('');
   }
 }

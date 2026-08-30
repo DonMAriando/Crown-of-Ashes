@@ -15,7 +15,7 @@ function C(id,advisor,text,left,right,opt={}){
 }
 function O(label,effects={},extra={}){return {label,effects,...extra}}
 
-const VERSION='2.2.0';
+const VERSION='2.3.0';
 const STAT_KEYS=['pueblo','tesoro','ejercito','saber'];
 const STAT_LABELS={pueblo:'Pueblo',tesoro:'Tesoro',ejercito:'Ejército',saber:'Saber'};
 const STAT_ICONS={pueblo:'♟',tesoro:'◆',ejercito:'⚔',saber:'✦'};
@@ -68,7 +68,7 @@ const deathReasons={
   ejercitoHigh:['Tus generales descubrieron que tenían más hombres que vos. La coronación del mariscal fue breve.','El ejército ocupó cada plaza “por seguridad”. Al mediodía, también ocupó el trono.'],
   saberLow:['La ignorancia se volvió ley. Una epidemia de superstición terminó señalándote como la causa de todos los males.','Los archivos ardieron, las escuelas cerraron y el reino olvidó por qué debía obedecerte.'],
   saberHigh:['Los sabios concluyeron que la monarquía era una hipótesis innecesaria. Te reemplazaron por un Consejo de Cálculo.','La búsqueda de conocimiento abrió una puerta que nadie supo cerrar.'],
-  age:['El cuerpo cedió antes que el reino. Odón cerró los ojos del soberano y pidió que nadie tocara la corona hasta el alba.','Se durmió durante un consejo sobre peajes y no despertó. Fue una muerte ofensivamente administrativa.'],
+  age:['El cuerpo cedió antes que el reino. Odón cerró los ojos del soberano y pidió que nadie tocara la corona hasta el alba.','Se durmió durante un consejo sobre peajes y no despertó. Fue una muerte ofensivamente administrativa.','No fue una daga. Fue el invierno, por dentro.'],
   betrayal:['La copa llegó antes que la guardia. Los cuatro pilares seguían en pie. El oficio, no.'],
   betrayal_gold:['El vino tenía un dejo de cobre. Bruno juró que los libros cerraban. Cerraban, sí: sobre tu nombre.','Dormiste con el tesoro en calma. El copero no. Por eso despertó el reino sin vos.'],
   betrayal_protocol:['El ceremonial reservaba un asiento a tu izquierda. Desde ahí se corta la carne. Esa noche, también el reinado.','Firmaste de más y leíste de menos. El protocolo es un cuchillo que sonríe.'],
@@ -93,7 +93,17 @@ const DELAYED={
   heresy_stage:{advisor:'elian',text:'El culto de la estrella ya no se esconde. Piden que la Corona “mire hacia abajo” en un acto público.',left:O('Prohibido',{ejercito:3,pueblo:-4,saber:-2},{setFlags:['heresy_on']}),right:O('Que miren',{saber:5,pueblo:2},{hidden:{void:4},setFlags:['heresy_on']}),tags:['consecuencia','arco'],chain:'Herejía de la estrella'},
   plot_gold_knock:{advisor:'lupo',text:'En la mesa hay un cubierto de más. Nadie se sienta ahí. El copero limpia ese lugar dos veces y no canta.',left:O('Es un cubierto sucio',{pueblo:1},{special:'plotIgnore',hidden:{autoridad:2}}),right:O('Contá los cubiertos',{saber:2},{special:'plotLook'}),tags:['consecuencia','arco'],chain:'La mesa de Bruno',interrupt:true,years:0,consult:'Si hay un cubierto de más, hay un oficio de menos.'},
   plot_protocol_knock:{advisor:'ines',text:'Falta una rúbrica en el protocolo del banquete. Alguien la arrancó. El espacio sigue caliente, como una silla recién ocupada.',left:O('Reescribí el ceremonial',{saber:1},{special:'plotIgnore',hidden:{autoridad:3}}),right:O('¿Quién rasgó la hoja?',{saber:3},{special:'plotLook'}),tags:['consecuencia','arco'],chain:'Firma del protocolo',interrupt:true,years:0,consult:'El protocolo no se rasga solo. Se rasga para que entre un cuchillo.'},
-  plot_cipher_knock:{advisor:'mara',text:'Llegó un correo sin sello. El papel huele a Norte y a prisa. Nadie lo pidió. Yo tampoco, y eso me ofende.',left:O('Al fuego',{ejercito:2},{special:'plotIgnore',hidden:{inteligencia:-4}}),right:O('Leé conmigo',{saber:3},{special:'plotLook'}),tags:['consecuencia','arco'],chain:'Correo cifrado',interrupt:true,years:0,consult:'Un correo sin sello es una daga que todavía no eligió cuándo.'}
+  plot_cipher_knock:{advisor:'mara',text:'Llegó un correo sin sello. El papel huele a Norte y a prisa. Nadie lo pidió. Yo tampoco, y eso me ofende.',left:O('Al fuego',{ejercito:2},{special:'plotIgnore',hidden:{inteligencia:-4}}),right:O('Leé conmigo',{saber:3},{special:'plotLook'}),tags:['consecuencia','arco'],chain:'Correo cifrado',interrupt:true,years:0,consult:'Un correo sin sello es una daga que todavía no eligió cuándo.'},
+  age_death:{advisor:'odon',text:'El pulso se va. No es peste ni daga: es el oficio, cumplido. Pedí que nadie toque la corona hasta que el Consejo nombre la mano que sigue.',left:O('Cerrá los ojos',{},{special:'ageDeath'}),right:O('Llamad al heredero',{},{special:'ageDeath'}),tags:['consecuencia','dinastia'],chain:'El cuerpo cedió',interrupt:true,years:0,consult:'Odón no está preguntando. Está informando.'}
+};
+const DETONANTES={
+  plague_active:'Fiebre de Vidrio',war_active:'Tres Banderas',void_active:'Estrella negra',void_door:'La puerta',
+  famine_active:'Hambruna del Sur',schism_open:'Cisma del Estuario',schism_healed:'Los dos ritos',
+  mutiny_on:'Motín de la Guardia',flood_on:'Inundación de las Marismas',heresy_on:'Herejía de la estrella',
+  crisis_active:'Crisis dinástica',plot_named:'El nombre en la mesa',plot_foiled:'La daga no alcanzó',
+  casado:'Nupcias de Estado',testamento:'Testamento',constitucion:'Carta de Derechos',
+  hospital:'Hospital real',imprenta:'La imprenta',plague_cured:'Cura de la fiebre',war_peace:'Paz de Ceniza',
+  segundo_hijo:'Segunda cuna',regencia:'Regencia',abdicate_rumor:'Rumores de abdicación'
 };
 
 const PROCEDURAL={
@@ -132,6 +142,8 @@ const ACHIEVEMENTS=[
   ['two-rites','Dos ritos','Saná el cisma del Estuario.','⚓',s=>s.flags.includes('schism_healed')],
   ['canal','El río mudado','Cavá el canal de las Marismas.','⬡',s=>s.flags.includes('flood_canal')],
   ['old-crown','Corona larga','Llegá a los 65 años en el trono.','⌛',s=>s.rulerAge>=65],
+  ['natural-end','El cuerpo cedió','Morí de causas naturales.','⌛',s=>(s.meta.lifetimeDeaths.age||0)>=1],
+  ['child-crown','Cuna y cetro','Un menor de dieciséis heredó la corona.','♜',s=>(s.lineage||[]).some(r=>r.heirAge>0&&r.heirAge<16)],
   ['named-knife','El nombre en la palma','Desenmascará una traición y viví para contarla.','🗡',s=>s.flags.includes('plot_foiled')&&s.flags.includes('plot_named')],
   ['cup-refused','La copa retirada','Sobreviví a una conspiración sin conocer el nombre.','◇',s=>s.flags.includes('plot_foiled')&&!s.flags.includes('plot_named')],
   ['by-dagger','Oficio de cuchillo','Morí por una traición, no por los cuatro pilares.','♠',s=>(s.meta.lifetimeDeaths.betrayal||0)>=1]
@@ -194,6 +206,11 @@ function whisperFor(state){
   if(state.flags.includes('plot_named'))w.push('El nombre cabe en una palma. No en un salón.');
   if(state.flags.includes('plot_seeded')&&!state.flags.includes('plot_active'))w.push('En la cocina se habla bajo, y no de recetas.');
   if(state.persistent?.assassin)w.push('El que sirvió el vino de ayer todavía tiene las llaves.');
+  if(state.flags.includes('regencia'))w.push('El sello lo firma otra mano. El niño mira.');
+  else if(state.rulerAge>=65)w.push('El trono es más alto que el pulso.');
+  else if(state.rulerAge>=55)w.push('Inés habla de testamento como quien habla del tiempo: sin pedirlo.');
+  else if(state.rulerAge>=40)w.push('Odón cuenta las pausas entre una palabra y la siguiente.');
+  if(state.heir?.name)w.push(`En los pasillos ya dicen ${state.heir.name} como quien ensaya el futuro.`);
   return w;
 }
 

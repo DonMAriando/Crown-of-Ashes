@@ -2,7 +2,7 @@
 
 Juego original de estrategia narrativa en español (vos rioplatense). Gobernás Valdoria a través de generaciones: cada decisión deja una cicatriz; cada muerte, una herencia.
 
-Versión de contenido **2.2.0**. Repositorio: [DonMAriando/Crown-of-Ashes](https://github.com/DonMAriando/Crown-of-Ashes).
+Versión de contenido **2.3.0**. Repositorio: [DonMAriando/Crown-of-Ashes](https://github.com/DonMAriando/Crown-of-Ashes).
 
 ## Cómo jugar
 
@@ -35,8 +35,8 @@ El botón ♪ corta solo las camas. Los toques al deslizar, sellar o consultar s
 - Arcos largos: Fiebre de Vidrio, Tres Banderas, Observatorio Negro, República de Tinta, Hambruna del Sur, Cisma del Estuario, crisis dinástica, viaje a Sahr, motín, boda real, inundación, herejía de la estrella.
 - Tres conspiraciones (copa, protocolo, correo): una por corona, avisada, pueden matar sin tocar 0 ni 100. Si te matan, el heredero hereda al asesino.
 - El reino se hereda: obras, edictos, facciones y vecinos no vuelven a 50/50.
-- Edad, sucesor nombrado, muerte natural, finales que pueden sellar la crónica.
-- Códice con mapa, anales exportables, legado con leyes de casa.
+- Edad que se siente: el mazo cambia a los 40, 55 y 65; Odón anuncia la muerte natural en una carta. El heredero se ve en la mesa y envejece con vos; si es menor de dieciséis, hay regencia.
+- Códice con **Linaje** (fila de coronas y detonantes), mapa, anales del reinado actual, legado con leyes de casa.
 - Retratos de corte, salón de piedra propio (el dorso queda en el mazo), carta de pergamino, muerte y coronación como escena, tres imágenes de clímax.
 - Mesa leíble sobre la nave: pilares opacos y placas de elección, no texto al 20% sobre la piedra.
 - Ocho camas de Suno en `musica/` (Opus, con fallback a MP3): menú de coronación, corte, invierno, peste, guerra, vacío, conspiración y un stinger de muerte. El ♪ las apaga; pasar cartas no reinicia la pista.
@@ -60,7 +60,7 @@ El botón ♪ corta solo las camas. Los toques al deslizar, sellar o consultar s
 | `cards-core.js` / `cards-arcs.js` | El mazo |
 | `audio.js` | Camas HTML (`musica/*.opus`) y toques Web Audio |
 | `musica/` | Camas de Suno (ver `musica/CAMAS.md`) |
-| `game.js` | Motor, guardado, mute |
+| `game.js` | Motor, sucesión, linaje, guardado, mute |
 | `img/` | Salón, retratos, dorso, clímax, muerte, coronación |
 | `manifest.webmanifest` + `sw.js` | PWA |
 
@@ -71,7 +71,7 @@ Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferenci
 - Los retratos y las escenas son arte generado para esta corte, no pinturas licenciadas. El hueco de la carta es una franja ancha (cara y hombros), no el óleo entero.
 - Las camas son pistas Opus en `musica/` (Suno). Si el navegador no reproduce Opus, busca el mismo nombre en MP3. Los toques de las cartas siguen en Web Audio. El botón ♪ corta solo las camas.
 - Chrome (y otros) no sueltan el audio hasta el primer clic. Fundar, continuar o tocar ♪ basta.
-- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.17` al momento de escribir esto).
+- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.18` al momento de escribir esto).
 
 Al publicar un cambio de interfaz o de motor: bump de `style.css?v=` / `audio.js?v=` / `game.js?v=` en **los dos** HTML, bump de `CACHE` en `sw.js`, y una fila nueva arriba de la bitácora.
 
