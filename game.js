@@ -27,12 +27,12 @@ class RNG{
   weighted(items,weightFn){let total=0,ws=items.map(x=>{const w=Math.max(0,weightFn(x));total+=w;return w});if(total<=0)return this.pick(items);let r=this.next()*total;for(let i=0;i<items.length;i++){r-=ws[i];if(r<=0)return items[i]}return items.at(-1)}
 }
 
-function defaultMeta(){return {legacy:0,perks:[],packs:[],totalReigns:0,totalDecisions:0,bestReign:0,achievements:[],discoveredAdvisors:[],secrets:[],endings:[],lifetimeDeaths:{}}}
+function defaultMeta(){return {legacy:0,perks:[],packs:[],totalReigns:0,totalDecisions:0,bestReign:0,achievements:[],discoveredAdvisors:[],secrets:[],endings:[],lifetimeDeaths:{},chronicles:[]}}
 function loadMeta(){
   try{
     const raw=localStorage.getItem(META_KEY)||localStorage.getItem(META_KEY_V1)||'{}';
     const parsed=JSON.parse(raw);
-    return {...defaultMeta(),...parsed,packs:parsed.packs||[]};
+    return {...defaultMeta(),...parsed,packs:parsed.packs||[],chronicles:parsed.chronicles||[]};
   }catch{return defaultMeta()}
 }
 function initialState(seed,dynasty,mode,meta,house){
@@ -46,7 +46,7 @@ function initialState(seed,dynasty,mode,meta,house){
     neighbors:{norte:45,sahr:50,ceniza:40},
     personality:{clemencia:0,razon:0},
     flags:[],edicts:[],places:{},
-    persistent:{heirTrait:null,heirPeople:0,spouse:null,children:[],assassin:null,plotFace:null,plotsFoiled:0},
+    persistent:{heirTrait:null,heirPeople:0,spouse:null,children:[],assassin:null,plotFace:null,plotsFoiled:0,shadowKin:[]},
     heir:null,regent:null,lineage:[],reignMarks:[],lineageStartAge:22,
     guardUsed:false,undoUsed:false,tutorialDone:false,
     relationships:Object.fromEntries(Object.keys(ADVISORS).map(k=>[k,0])),
@@ -156,9 +156,10 @@ function setRuler(fromHeir){
   state.rngCounter=rng.counter;
 }
 function pickRegent(){
-  const ids=['ines','odon','elian','bruno'];
+  const ids=['ines','odon','elian','bruno'].filter(id=>!(id==='odon'&&hasFlag('odon_gone')));
+  if(hasFlag('iva_court')||hasFlag('odon_gone'))ids.push('iva');
   ids.sort((a,b)=>(state.relationships[b]||0)-(state.relationships[a]||0));
-  const id=ids[0];
+  const id=ids[0]||'ines';
   return {advisor:id,name:ADVISORS[id].name,until:16};
 }
 function heirKin(h){
@@ -173,6 +174,15 @@ function rememberChild(h){
   const hit=state.persistent.children.find(c=>c.name===h.name);
   if(hit){hit.age=h.age;hit.gender=h.gender||hit.gender;return}
   state.persistent.children.push({name:h.name,gender:h.gender,age:h.age,kin:h.kin||heirKin(h)});
+}
+function stashShadowKin(crownedName){
+  state.persistent.shadowKin=state.persistent.shadowKin||[];
+  (state.persistent.children||[]).forEach(k=>{
+    if(!k.name||k.name===crownedName)return;
+    const hit=state.persistent.shadowKin.find(s=>s.name===k.name);
+    if(hit){hit.age=k.age;hit.gender=k.gender||hit.gender;return}
+    state.persistent.shadowKin.push({name:k.name,gender:k.gender,age:Math.max(1,k.age||1),kin:k.kin,returned:false});
+  });
 }
 function ensureHeir(forceName){
   if(state.heir){
@@ -248,6 +258,10 @@ function conditionOK(card){
   if(/^plot-(gold|protocol|cipher)-blade/.test(card.id))return false;
   if((hasFlag('plot_active')||hasFlag('plot_seeded'))&&/^(plague-0|war-0|void-0|famine-0|schism-0|mutiny-0|flood-0|heresy-0|crisis-0)$/.test(card.id))return false;
   if(card.pack&&!card.requires&&!(state.meta.packs||[]).includes(card.pack))return false;
+  if(card.needsHeir&&!state.heir)return false;
+  if(card.needsHeirNamed&&!state.heir?.name)return false;
+  if(card.minHeirAge&&(!state.heir||(state.heir.age||0)<card.minHeirAge))return false;
+  if(card.advisor==='iva'&&!hasFlag('iva_court')&&!hasFlag('odon_gone'))return false;
   if(card.tags?.includes('faccion')&&card.weight<=5){
     const map={'noble-ultimatum':'nobleza','clero-ultimatum':'clero','guild-ultimatum':'gremios','border-ultimatum':'frontera'};
     const fac=map[card.id];if(fac&&(state.factions[fac]||50)>22)return false;
@@ -294,16 +308,30 @@ function makeProceduralCard(){
   const accept={[focus]:mag,[other]:-cost};const reject={[focus]:-rng.int(2,6),[other]:rng.int(1,4)};
   return C('proc-'+state.decision+'-'+rng.int(1000,9999),advisor,text,O('No esta vez',reject,{placeResent:lugar}),O('Concedido',accept),{tags:['petición','procedural'],weight:7,cooldown:0,place:lugar,work:obra.includes(' ') ? obra.replace(/^un[a]? /,'') : obra});
 }
+function remapAdvisor(card){
+  if(!card)return card;
+  if(hasFlag('odon_gone')&&card.advisor==='odon'&&!card.allowGone){
+    card.advisor='iva';
+    if(card.id&&String(card.id).includes('age_death'))card.consult='Iva no está preguntando. Está informando.';
+  }
+  return card;
+}
 function delayedToCard(d){
+  if(d.type==='kin_return'){
+    const kin=eldestKin();
+    if(kin)kin.returned=true;
+    addFlag('kin_returned');
+  }
   const blade=/^plot_(gold|protocol|cipher)_blade$/.exec(d.type);
   if(blade){
     const kind=blade[1];
     const id=hasFlag('plot_named')?`plot-${kind}-blade-named`:`plot-${kind}-blade`;
     const c=CARDS.find(x=>x.id===id);
-    if(c)return {...deepClone(c),weight:100,rarity:'consecuencia',cooldown:0,once:false,interrupt:true,years:0};
+    if(c)return remapAdvisor({...deepClone(c),weight:100,rarity:'consecuencia',cooldown:0,once:false,interrupt:true,years:0});
   }
   const base=DELAYED[d.type];if(!base)return null;
-  return {...deepClone(base),id:'delayed-'+d.type+'-'+d.created,weight:100,rarity:'consecuencia',cooldown:0,once:false,minReign:0,maxReign:999,minDecision:0,maxDecision:999,minAge:0,maxAge:200,years:base.years??1,interrupt:!!base.interrupt,chain:base.chain||''};
+  const card={...deepClone(base),id:'delayed-'+d.type+'-'+d.created,weight:100,rarity:'consecuencia',cooldown:0,once:false,minReign:0,maxReign:999,minDecision:0,maxDecision:999,minAge:0,maxAge:200,years:base.years??1,interrupt:!!base.interrupt,chain:base.chain||'',allowGone:!!base.allowGone};
+  return remapAdvisor(card);
 }
 function maybeUltimatum(){
   const map={nobleza:'noble-ultimatum',clero:'clero-ultimatum',gremios:'guild-ultimatum',frontera:'border-ultimatum'};
@@ -334,25 +362,45 @@ function maybeQueueAgeDeath(){
     state.delayed.push({type:'age_death',at:state.worldYear,created:state.worldYear,interrupt:true});
   }
 }
+function maybeQueueOdonFarewell(){
+  if(hasFlag('odon_gone')||hasFlag('iva_court')||hasFlag('odon_farewell_queued'))return;
+  if(state.delayed.some(d=>d.type==='odon_farewell'))return;
+  if(state.rulerAge<46&&state.worldYear<36)return;
+  const p=clamp((state.rulerAge-45)*0.035+(state.worldYear-30)*0.008,0,.38);
+  if(state.worldYear>=52||state.rulerAge>=58||rng.chance(p)){
+    addFlag('odon_farewell_queued');
+    state.delayed.push({type:'odon_farewell',at:state.worldYear+rng.int(1,4),created:state.worldYear,interrupt:true});
+  }
+}
+function eldestKin(){
+  return (state.persistent.shadowKin||[]).filter(k=>k.name&&!k.returned&&(k.age||0)>=16).sort((a,b)=>(b.age||0)-(a.age||0))[0]||null;
+}
+function maybeQueueKinReturn(){
+  if(state.delayed.some(d=>d.type==='kin_return'))return;
+  if(state.reign<2||state.reignDecisions<5)return;
+  const kin=eldestKin();
+  if(!kin||(kin.age||0)<18)return;
+  state.delayed.push({type:'kin_return',at:state.worldYear+rng.int(0,2),created:state.worldYear,interrupt:true});
+}
 function getNextCard(){
-  maybeQueueAgeDeath();
+  maybeQueueAgeDeath();maybeQueueOdonFarewell();maybeQueueKinReturn();
   if(!state.tutorialDone&&state.reign===1){
     const next=TUTORIAL.find(c=>!state.onceSeen.includes(c.id));
     if(next)return deepClone(next);
     state.tutorialDone=true;
   }
-  if(state.forced.length){const id=state.forced.shift();const c=CARDS.find(x=>x.id===id)||TUTORIAL.find(x=>x.id===id);if(c)return deepClone(c)}
+  if(state.forced.length){const id=state.forced.shift();const c=CARDS.find(x=>x.id===id)||TUTORIAL.find(x=>x.id===id);if(c)return remapAdvisor(deepClone(c))}
   const due=state.delayed.filter(d=>d.at<=state.worldYear);
   if(due.length){
     due.sort((a,b)=>(b.interrupt-a.interrupt)||(a.at-b.at));
     const d=due[0];state.delayed=state.delayed.filter(x=>x!==d);const c=delayedToCard(d);if(c)return c;
   }
-  const ult=maybeUltimatum();if(ult)return ult;
+  const ult=maybeUltimatum();if(ult)return remapAdvisor(ult);
   let candidates=CARDS.filter(conditionOK);
   if(!candidates.length)return makeProceduralCard();
   const arcActive=state.flags.some(f=>/plague_active|war_active|void_active|famine_active|schism_open|mutiny_on|flood_on|heresy_on|crisis_active|plot_active/.test(f));
   if(rng.chance(arcActive?.07:.14))return makeProceduralCard();
-  const selected=rng.weighted(candidates,cardWeight);state.rngCounter=rng.counter;return deepClone(selected);
+  const selected=rng.weighted(candidates,cardWeight);state.rngCounter=rng.counter;return remapAdvisor(deepClone(selected));
 }
 
 function resolveMagnitude(v){if(Array.isArray(v))return rng.int(v[0],v[1]);return v||0}
@@ -399,8 +447,8 @@ function runSpecial(id){
     if(rng.chance(chance)){addFlag('war_peace');clearFlag('war_active');state.stats.pueblo=clamp(state.stats.pueblo+8,0,100);state.stats.tesoro=clamp(state.stats.tesoro+5,0,100);toast('Paz de Ceniza','La conferencia tuvo éxito. Tres firmas terminaron una guerra que parecía interminable.');addSecret('La tinta que detuvo tres ejércitos')}
     else{state.stats.ejercito=clamp(state.stats.ejercito-10,0,100);state.stats.pueblo=clamp(state.stats.pueblo-6,0,100);toast('La mesa se rompió','Un delegado fue asesinado durante la negociación. La guerra continúa.')}
   }
-  if(id==='nameHeirSelf'){ensureHeir(true);state.heir.name=state.ruler.split(' ')[0];state.heir.kin=heirKin(state.heir);rememberChild(state.heir);markReign('Heredero nombrado');toast('Nombre del heredero',state.heir.name+' llevará tu nombre.')}
-  if(id==='nameHeirPeople'){ensureHeir(true);state.heir.name=nameFor(state.heir.gender);state.heir.kin=heirKin(state.heir);rememberChild(state.heir);markReign('Heredero nombrado');toast('Nombre del heredero','La plaza eligió a '+state.heir.name+'.')}
+  if(id==='nameHeirSelf'){ensureHeir(true);state.heir.name=state.ruler.split(' ')[0];state.heir.kin=heirKin(state.heir);rememberChild(state.heir);addFlag('heir_named');toast('Nombre del heredero',state.heir.name+' llevará tu nombre.')}
+  if(id==='nameHeirPeople'){ensureHeir(true);state.heir.name=nameFor(state.heir.gender);state.heir.kin=heirKin(state.heir);rememberChild(state.heir);addFlag('heir_named');toast('Nombre del heredero','La plaza eligió a '+state.heir.name+'.')}
   if(id==='marrySelf'){state.persistent.spouse=state.persistent.spouse||nameFor(state.rulerGender==='f'?'m':'f');addFlag('casado');addEdict('Matrimonio real')}
   if(id==='secondChild'){
     const g=rng.chance(.5)?'f':'m';
@@ -420,6 +468,34 @@ function runSpecial(id){
   if(id==='betrayFoil')betrayFoil();
   if(id==='shadowPurge'){state.persistent.assassin=null;state.persistent.plotFace=null;['shadow_gold','shadow_protocol','shadow_cipher'].forEach(clearFlag);toast('La mesa se limpia','El oficio del cuchillo no se hereda. Esta vez.')}
   if(id==='shadowKeep'){state.hidden.corrupcion=clamp(state.hidden.corrupcion+6,-100,150);toast('El copero sigue','La casa prefiere no preguntar de qué murió el anterior.')}
+  if(id==='odonStay'){
+    if(!state.delayed.some(d=>d.type==='odon_farewell'))state.delayed.push({type:'odon_farewell',at:state.worldYear+rng.int(8,14),created:state.worldYear,interrupt:true});
+    toast('Un invierno más','Odón se queda. Iva espera junto a la silla.');
+  }
+  if(id==='odonGone'){
+    addFlag('odon_gone');addFlag('iva_court');
+    state.delayed=state.delayed.filter(d=>d.type!=='odon_farewell');
+    state.relationships.iva=Math.round((state.relationships.odon||0)*0.7);
+    discoverAdvisor('iva');
+    addEdict('Iva Grís toma el pulso');
+    addSecret('La silla de Odón se deja, no se hereda');
+    toast('El oficio se cede','Iva Grís ocupa la silla. Odón no la discute.');
+  }
+  if(id==='kinRefuse'){
+    addFlag('kin_spurned');
+    const kin=kinOnStage();
+    toast('Sin tierra',`${kin?.name||'El pariente'} se va con la misma cara que trajo.`);
+  }
+  if(id==='kinSettle'){
+    addFlag('kin_settled');
+    const kin=kinOnStage();
+    addEdict(kin?.name?`Feudo de ${kin.name}`:'Feudo de la otra cuna');
+    toast('La otra cuna',`${kin?.name||'El pariente'} recibe tierra. El ceremonial finge que siempre estuvo previsto.`);
+  }
+  if(id==='abdicate'){ensureHeir(true);addFlag('abdicate_done');addFlag('abdicating')}
+}
+function kinOnStage(){
+  return (state.persistent.shadowKin||[]).find(k=>k.returned)||eldestKin()||(state.persistent.shadowKin||[])[0]||null;
 }
 
 function plotKind(){
@@ -510,7 +586,18 @@ function betrayFoil(){
     toast('Suerte de palacio','La copa no se bebió. El nombre sigue suelto en los pasillos.');
   }
 }
-function substPlot(s){return String(s||'').replace(/\{traidor\}/g,state.persistent.plotFace||'el traidor')}
+function substNames(s){
+  const h=state.heir;
+  const heirWord=h?.name||(h?.gender==='f'?'la niña':h?'el niño':'el heredero');
+  const kin=kinOnStage();
+  const kinWord=kin?.name||'un pariente';
+  const regent=state.regent?.name||'el Consejo';
+  return String(s||'')
+    .replace(/\{traidor\}/g,state.persistent.plotFace||'el traidor')
+    .replace(/\{heredero\}/g,heirWord)
+    .replace(/\{kin\}/g,kinWord)
+    .replace(/\{regente\}/g,regent);
+}
 function checkBetrayalDeath(){
   if(!hasFlag('plot_killed'))return false;
   endReign('betrayal',false);return true;
@@ -588,10 +675,11 @@ function choose(side,opts={}){
     if(years>0){
       if(state.heir)state.heir.age=(state.heir.age||1)+years;
       (state.persistent.children||[]).forEach(c=>{c.age=(c.age||0)+years});
+      (state.persistent.shadowKin||[]).forEach(k=>{k.age=(k.age||0)+years});
       state.season=(state.season+years)%4;pulseYear();
       if(state.rulerAge>=65)markReign('Corona larga');
     }
-    maybeSeedHeir();maybeCloseRegency();maybeQueueAgeDeath();
+    maybeSeedHeir();maybeCloseRegency();maybeQueueAgeDeath();maybeQueueOdonFarewell();maybeQueueKinReturn();
     state.consulted=false;
     scheduleWorldEvents();updateHiddenMilestones();
     state.history.unshift({year:state.reignYear,world:state.worldYear,reign:state.reign,ruler:state.ruler,speaker:ADVISORS[card.advisor]?.name||'Destino',text:cardTextOf(card),choice:choice.label,effects:realized,annal:''});
@@ -609,7 +697,7 @@ function choose(side,opts={}){
     animateChoice(side,()=>{
       try{
         renderStats();renderHeader();
-        if(checkDeath()||checkAgeDeath()||checkBetrayalDeath()||checkSpecialEnding())return;
+        if(checkAbdicate()||checkDeath()||checkAgeDeath()||checkBetrayalDeath()||checkSpecialEnding())return;
         dealCard();
       }catch(err){console.error(err);try{dealCard()}catch{}}
       finally{releaseCard()}
@@ -648,9 +736,14 @@ function checkAgeDeath(){
   if(hasFlag('age_dying')){endReign('age',false);return true}
   return false;
 }
+function checkAbdicate(){
+  if(hasFlag('abdicating')){endReign('abdicate',false);return true}
+  return false;
+}
 function causeLabel(stat,high){
   if(stat==='age')return 'El cuerpo cedió';
   if(stat==='betrayal')return 'La daga';
+  if(stat==='abdicate')return 'Abdicación';
   return `${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
 }
 function recordLineage(stat,high){
@@ -678,19 +771,19 @@ function rumorOfDead(){
 }
 function endReign(stat,high){
   state.meta.totalReigns++;state.meta.bestReign=Math.max(state.meta.bestReign,state.reignYear);
-  const key=stat==='betrayal'?'betrayal':stat==='age'?'age':stat+(high?'High':'Low');
+  const key=stat==='betrayal'?'betrayal':stat==='age'?'age':stat==='abdicate'?'abdicate':stat+(high?'High':'Low');
   state.meta.lifetimeDeaths[key]=(state.meta.lifetimeDeaths[key]||0)+1;
   const earned=Math.max(1,Math.floor(state.reignYear/8)+Math.floor(state.reignDecisions/18));
   state.meta.legacy+=earned;localStorage.setItem(META_KEY,JSON.stringify(state.meta));
   const kind=plotKind();
-  const txt=stat==='betrayal'?rng.pick(deathReasons['betrayal_'+(kind||'gold')]||deathReasons.betrayal):stat==='age'?rng.pick(deathReasons.age):rng.pick(deathReasons[key]);
-  $('#deathTitle').textContent=stat==='betrayal'?'La daga encontró el oficio':stat==='age'?'El cuerpo cedió':`${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
+  const txt=stat==='abdicate'?rng.pick(deathReasons.abdicate):stat==='betrayal'?rng.pick(deathReasons['betrayal_'+(kind||'gold')]||deathReasons.betrayal):stat==='age'?rng.pick(deathReasons.age):rng.pick(deathReasons[key]);
+  $('#deathTitle').textContent=stat==='abdicate'?'La corona se deja':stat==='betrayal'?'La daga encontró el oficio':stat==='age'?'El cuerpo cedió':`${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
   $('#deathText').textContent=txt;
-  $('#deathMemory').textContent=stat==='betrayal'?(state.persistent.plotFace?`${state.persistent.plotFace} sigue comiendo en palacio. El heredero heredará esa silla.`:rumorOfDead()):rumorOfDead();
+  $('#deathMemory').textContent=stat==='abdicate'?'El heredero ya está sentado. El ceremonial finge que siempre fue así.':stat==='betrayal'?(state.persistent.plotFace?`${state.persistent.plotFace} sigue comiendo en palacio. El heredero heredará esa silla.`:rumorOfDead()):rumorOfDead();
   $('#deathYears').textContent=state.reignYear;
   $('#deathAge').textContent=Math.round(state.rulerAge);
   $('#deathLegacy').textContent='+'+earned;
-  $('#deathIcon').textContent=stat==='betrayal'?'🗡':stat==='age'?'⌛':STAT_ICONS[stat];
+  $('#deathIcon').textContent=stat==='abdicate'?'♜':stat==='betrayal'?'🗡':stat==='age'?'⌛':STAT_ICONS[stat];
   const works=state.edicts.slice(-6).map(e=>`<div class="unlock">Sobrevió: ${escapeHtml(e.name)}</div>`).join('')||'<div class="unlock">Ninguna obra nombrada sobrevive con claridad.</div>';
   $('#deathEdicts').innerHTML=works;
   resolveSuccessor();
@@ -702,7 +795,7 @@ function endReign(stat,high){
   const nextBtn=$('#nextReignBtn');
   if(nextBtn)nextBtn.textContent=minor?`Abrir la regencia de ${state.heir.name}`:`Coronar a ${state.heir.name}`;
   $('#deathUnlocks').innerHTML=earned>=4?'<div class="unlock">✧ Tu largo reinado fortalece el legado de la dinastía.</div>':'';
-  if(el.deathArt){el.deathArt.src=deathArtFor(stat);el.deathArt.alt=stat==='betrayal'?'La daga':'El fin del reinado'}
+  if(el.deathArt){el.deathArt.src=deathArtFor(stat);el.deathArt.alt=stat==='abdicate'?'La abdicación':stat==='betrayal'?'La daga':'El fin del reinado'}
   if(typeof CourtFx!=='undefined')CourtFx.death();
   $('#deathDialog').showModal();saveAll();
   sfx('death');
@@ -746,9 +839,10 @@ function nextReign(){
   state.flags=state.flags.filter(f=>!/^plot_/.test(f));
   if(killer?.kind)addFlag('shadow_'+killer.kind);
   state.reignMarks=[];
-  ['age_dying','age_death_queued'].forEach(clearFlag);
+  ['age_dying','age_death_queued','abdicating','abdicate_rumor'].forEach(clearFlag);
   state.delayed=state.delayed.filter(d=>d.type!=='age_death');
   setRuler(true);
+  stashShadowKin(state.ruler.split(' ')[0]);
   state.heir=null;state.currentCard=null;state.busy=false;
   state.persistent.children=[];
   if((state.meta.perks||[]).includes('primogenitura'))ensureHeir(true);
@@ -760,7 +854,7 @@ function nextReign(){
 function cardTextOf(c){
   let t=c.text||'';
   if(c.coda){for(const [flag,extra] of Object.entries(c.coda)){if(hasFlag(flag))t+=extra}}
-  return substPlot(t);
+  return substNames(t);
 }
 function dealCard(){state.currentCard=getNextCard();state.consulted=false;state.rngCounter=rng.counter;saveAll();renderCard();sfx('deal')}
 function artForCard(c){
@@ -778,6 +872,7 @@ function deathArtFor(stat){
     if(k==='cipher')return 'img/climax-midnight.jpg';
   }
   if(stat==='age')return 'img/scene-death.jpg';
+  if(stat==='abdicate')return 'img/scene-coronation.jpg';
   return 'img/scene-death.jpg';
 }
 function reduceMotionOn(){
@@ -807,7 +902,7 @@ function renderCard(){
   }
   el.cardTag.textContent=(c.tags?.[0]||'CORTE').toUpperCase();
   el.rarityTag.textContent=String(c.rarity||'común').toUpperCase();
-  const left=substPlot(flexLabel(c.left.label,'left')),right=substPlot(flexLabel(c.right.label,'right'));
+  const left=substNames(flexLabel(c.left.label,'left')),right=substNames(flexLabel(c.right.label,'right'));
   el.leftText.textContent=left;el.rightText.textContent=right;el.leftBtnText.textContent=left;el.rightBtnText.textContent=right;
   el.swipeLeftText.textContent=left;el.swipeRightText.textContent=right;
   el.leftEffects.textContent=effectPreview(c.left);el.rightEffects.textContent=effectPreview(c.right);
@@ -837,7 +932,7 @@ function consultCouncil(){
   state.consulted=true;state.lastConsult=state.worldYear;
   const a=ADVISORS[c.advisor];
   const line=c.consult||`${a?.name||'El Consejo'} murmura: izquierda ${effectPreview(c.left,true) || 'casi nada'}; derecha ${effectPreview(c.right,true)||'casi nada'}.`;
-  el.consultHint.textContent=substPlot(line);
+  el.consultHint.textContent=substNames(line);
   el.leftEffects.textContent=effectPreview(c.left,true);
   el.rightEffects.textContent=effectPreview(c.right,true);
   el.consultBtn.disabled=true;
@@ -1027,6 +1122,7 @@ function loadGame(){
   }catch(e){console.error(e);return false}
 }
 function startNew(opts={}){
+  archiveIfPlaying('nueva casa');
   const dynasty=$('#dynastyInput').value.trim()||'de Valdoria';
   const seed=opts.daily?dailySeed():($('#seedInput').value.trim()||randomSeed());
   const mode=$('#modeSelect').value;
@@ -1057,6 +1153,9 @@ function exportBook(){
     '',
     '## Edictos y obras',
     ...(state.edicts.length?state.edicts.map(e=>`- ${e.name} (año mundial ${e.year})`):['- (ninguno)']),
+    '',
+    '## Crónicas selladas',
+    ...((state.meta.chronicles||[]).length?(state.meta.chronicles||[]).map(b=>`- ${b.dynasty} (${b.years} años): ${(b.lineage||[]).map(r=>r.name).join(' → ')||b.lastRuler||'—'}`):['- Todavía ningún libro cerrado.']),
     '',
     '## Anales',
     ...[...state.history].reverse().map(h=>`- ${h.annal||annalLine(h)}`)
@@ -1089,8 +1188,9 @@ function sparkSVG(){
 function mapSVG(){
   return `<svg class="map-svg" viewBox="0 0 260 230" role="img" aria-label="Mapa de Valdoria">${REGIONS.map(r=>{
     const on=r.on?r.on(state):false;const hurt=r.hurt?r.hurt(state):false;
-    const cls=['region',on?'on':'',hurt?'hurt':''].filter(Boolean).join(' ');
-    return `<path class="${cls}" data-id="${r.id}" d="${r.d}"><title>${r.name}</title></path>`;
+    const built=r.mark?r.mark(state):'';
+    const cls=['region',on?'on':'',hurt?'hurt':'',built?'built':''].filter(Boolean).join(' ');
+    return `<path class="${cls}" data-id="${r.id}" d="${r.d}"><title>${r.name}${built?' · '+built:''}</title></path>`;
   }).join('')}<text x="130" y="222" text-anchor="middle" fill="#8f899b" font-size="9" font-family="Georgia">Valdoria y sus orillas</text></svg>`;
 }
 function lineageNodeHTML(r,living){
@@ -1120,14 +1220,23 @@ function renderCodex(tab='lineage'){
     const legend=REGIONS.map(r=>{
       const hurt=r.hurt&&r.hurt(state);
       const on=r.on&&r.on(state);
-      const status=r.id==='capital'?(hurt?'herida':'sede de la corona'):hurt?'herido':on?'marcado en el estandarte':'en calma';
+      const built=r.mark&&r.mark(state);
+      const status=r.id==='capital'?(hurt?'herida':built?built:'sede de la corona'):hurt?'herido':built?built:on?'marcado en el estandarte':'en calma';
       return `<div><b>${r.name}</b> — ${status}</div>`;
     }).join('');
     box.innerHTML=`<div class="map-wrap">${mapSVG()}<div class="map-legend">${legend}<p>Vecinos: ${NEIGHBOR_KEYS.map(k=>`${NEIGHBOR_LABELS[k]} ${Math.round(state.neighbors[k])}`).join(' · ')}</p><p>Facciones: ${FACTION_KEYS.map(k=>`${FACTION_LABELS[k]} ${Math.round(state.factions[k])}`).join(' · ')}</p></div></div>`;
   }
+  if(tab==='chronicles'){
+    const books=state.meta.chronicles||[];
+    box.innerHTML=books.length?books.slice().reverse().map(b=>{
+      const line=(b.lineage||[]).map(r=>`${escapeHtml(r.name)} (${r.years})`).join(' → ')||escapeHtml(b.lastRuler||'una corona');
+      const why=b.reason==='sello'?'sellada':'archivada al fundar otra casa';
+      return `<div class="chronicle-book"><b>${escapeHtml(b.dynasty)}</b><small>${escapeHtml(b.motto||'sin lema')} · ${b.years} años de Valdoria · ${why}</small><div>${line}</div></div>`;
+    }).join(''):'<p class="lead">Todavía no hay un libro cerrado. Sellá una crónica o fundá otra casa: el Códice guarda el siglo anterior.</p>';
+  }
   if(tab==='secrets')box.innerHTML=state.meta.secrets.length?state.meta.secrets.map(s=>`<div class="secret found"><b>✦ ${escapeHtml(s)}</b></div>`).join(''):'<p class="lead">Los secretos no se anuncian. Se encuentran.</p>';
   if(tab==='stats'){
-    const rows=[['Dinastía',state.dynasty],['Lema',state.house?.motto||'—'],['Años de historia',state.worldYear],['Coronas en el linaje',(state.lineage||[]).length],['Reinados completados',state.meta.totalReigns],['Decisiones totales',state.meta.totalDecisions],['Mejor reinado',state.meta.bestReign+' años'],['Edad del soberano',Math.round(state.rulerAge)],['Clemencia / razón',`${state.personality.clemencia} / ${state.personality.razon}`],['Legado',state.meta.legacy+' ✧'],['Finales',`${state.meta.endings.length}/${SPECIAL_ENDINGS.length}`],['Cartas escritas',CARDS.length],['Consecuencias pendientes',state.delayed.length],['Corrupción',Math.round(state.hidden.corrupcion)],['Salud pública',Math.round(state.hidden.salud)],['Inteligencia',Math.round(state.hidden.inteligencia)],['Packs NG+',(state.meta.packs||[]).join(', ')||'—']];
+    const rows=[['Dinastía',state.dynasty],['Lema',state.house?.motto||'—'],['Años de historia',state.worldYear],['Coronas en el linaje',(state.lineage||[]).length],['Crónicas selladas',(state.meta.chronicles||[]).length],['Reinados completados',state.meta.totalReigns],['Decisiones totales',state.meta.totalDecisions],['Mejor reinado',state.meta.bestReign+' años'],['Edad del soberano',Math.round(state.rulerAge)],['Clemencia / razón',`${state.personality.clemencia} / ${state.personality.razon}`],['Legado',state.meta.legacy+' ✧'],['Finales',`${state.meta.endings.length}/${SPECIAL_ENDINGS.length}`],['Cartas escritas',CARDS.length],['Consecuencias pendientes',state.delayed.length],['Corrupción',Math.round(state.hidden.corrupcion)],['Salud pública',Math.round(state.hidden.salud)],['Inteligencia',Math.round(state.hidden.inteligencia)],['Packs NG+',(state.meta.packs||[]).join(', ')||'—']];
     box.innerHTML=sparkSVG()+rows.map(([a,b])=>`<div class="stat-table"><span>${a}</span><b>${escapeHtml(String(b))}</b></div>`).join('');
   }
 }
@@ -1141,9 +1250,48 @@ function showEnding(e){
   $('#endingDialog').dataset.terminal=e.terminal?'1':'0';
   $('#endingDialog').showModal();
 }
+function chronicleWorthSaving(snap){
+  if(!snap)return false;
+  return (snap.lineage||[]).length>0||(snap.reign||1)>1||(snap.reignYear||0)>=5||(snap.worldYear||0)>=8;
+}
+function archiveCurrentChronicle(reason,snap){
+  snap=snap||state;
+  if(!chronicleWorthSaving(snap))return;
+  const meta=snap.meta&&snap===state?snap.meta:loadMeta();
+  meta.chronicles=meta.chronicles||[];
+  const last=meta.chronicles.at(-1);
+  if(last&&last.dynasty===snap.dynasty&&last.years===snap.worldYear&&last.lastRuler===snap.ruler)return;
+  meta.chronicles.push({
+    dynasty:snap.dynasty,
+    house:snap.house?{color:snap.house.color,motto:snap.house.motto,founder:snap.house.founder}:null,
+    sealedAt:snap.worldYear,
+    reason:reason||'archivo',
+    founder:snap.house?.founder||'',
+    lineage:(snap.lineage||[]).slice(),
+    lastRuler:snap.ruler,
+    years:snap.worldYear,
+    motto:snap.house?.motto||''
+  });
+  if(meta.chronicles.length>12)meta.chronicles=meta.chronicles.slice(-12);
+  if(state&&snap===state)state.meta=meta;
+  localStorage.setItem(META_KEY,JSON.stringify(meta));
+}
+function archiveIfPlaying(reason){
+  let snap=state;
+  if(!snap){
+    try{
+      const raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(SAVE_KEY_V1);
+      if(raw)snap=JSON.parse(raw);
+    }catch{snap=null}
+  }
+  if(!snap)return;
+  archiveCurrentChronicle(reason||(snap.sealed?'sello':'nueva casa'),snap);
+}
 function sealChronicle(){
   $('#endingDialog').close();
-  state.sealed=true;saveAll();
+  state.sealed=true;
+  archiveCurrentChronicle('sello');
+  saveAll();
   $('#sealedText').textContent=`${state.dynasty}${state.house?.motto?': “'+state.house.motto+'”':''}. ${state.ruler} cierra el libro en el año ${state.worldYear} de Valdoria. ${rumorOfDead()}`;
   $('#sealedDialog').showModal();
 }
@@ -1168,7 +1316,7 @@ function bind(){
   $('#saveBtn').onclick=()=>{saveAll();toast('Guardado','La crónica quedó almacenada en este navegador.')};
   $('#exportBtn').onclick=exportSave;$('#importBtn').onclick=()=>$('#importFile').click();
   $('#importFile').onchange=e=>e.target.files[0]&&importSave(e.target.files[0]);
-  $('#newGameBtn').onclick=()=>{if(confirm('¿Fundar una nueva dinastía? El progreso meta (logros y legado) se conserva.')){localStorage.removeItem(SAVE_KEY);$('#menuDialog').close();$('#continueBtn').classList.add('hidden');$('#showFoundBtn').classList.add('hidden');$('#foundFields').classList.remove('collapsed');$('#startDialog').showModal()}};
+  $('#newGameBtn').onclick=()=>{if(confirm('¿Fundar una nueva dinastía? El progreso meta (logros y legado) se conserva. El linaje anterior queda en Crónicas.')){archiveIfPlaying('nueva casa');localStorage.removeItem(SAVE_KEY);$('#menuDialog').close();$('#continueBtn').classList.add('hidden');$('#showFoundBtn').classList.add('hidden');$('#foundFields').classList.remove('collapsed');$('#startDialog').showModal()}};
   el.soundToggle.onchange=e=>{state.settings.sound=e.target.checked;saveAll();ensureAudio()};
   el.hintToggle.onchange=e=>{state.settings.hints=e.target.checked;saveAll();renderCard()};
   el.musicToggle.onchange=e=>setMusic(e.target.checked);

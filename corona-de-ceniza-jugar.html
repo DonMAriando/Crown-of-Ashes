@@ -9,13 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;600;700&display=swap" />
-  <link rel="stylesheet" href="style.css?v=2.16" />
+  <link rel="stylesheet" href="style.css?v=2.20" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
 </head>
 <body>
-  <div class="kingdom-bg" id="kingdomBg" aria-hidden="true"><div class="hall-candle" id="hallCandle"></div></div>
+  <div class="kingdom-bg" id="kingdomBg" aria-hidden="true"><div class="hall-candle" id="hallCandle"></div><div class="hall-veil" id="hallVeil"></div></div>
   <canvas id="courtFx" aria-hidden="true"></canvas>
   <div id="app" class="app">
     <header class="topbar">
@@ -168,7 +168,7 @@
         <li><b>Saber</b> — escuelas, archivos, ritos. La ignorancia lincha; el exceso calcula tu irrelevancia.</li>
       </ul>
       <p>Los consejeros tienen humor. Si los maltratás, dejan de ser decorado. Las obras que construyas sobreviven a tu muerte. El tiempo no es siempre un año: algunas cartas duran una noche.</p>
-      <p>La edad sube con los años. Si el cuerpo cede, Odón lo dice en una carta: no es un dado oculto. El heredero aparece en la mesa; si es un niño, hay regencia. El Códice guarda la fila de coronas y los detonantes. Los Anales son el diario de <i>esta</i> corona.</p>
+      <p>La edad sube con los años. Si el cuerpo cede, Odón —o Iva, si él cedió el oficio— lo dice en una carta. El heredero, si tiene nombre, deja de ser «el niño». Si es menor de dieciséis, hay regencia. La otra cuna puede volver. El Códice guarda linaje, detonantes y crónicas selladas. Los Anales son el diario de <i>esta</i> corona.</p>
       <p>La corrupción, la autoridad y los rumores no se ven en las barras. Si se pudren, puede entrar una carta de traición: te avisan. Si ignorás los avisos, la daga no necesita que un pilar toque 0.</p>
       <p>Atajos: <kbd>←</kbd> <kbd>→</kbd> decidir · <kbd>M</kbd> música de corte · <kbd>?</kbd> esta ayuda · <kbd>Z</kbd> deshacer (si el modo lo permite).</p>
     </div>
@@ -188,6 +188,7 @@
     <div class="modal-head"><div><p class="eyebrow">PROGRESO DINÁSTICO</p><h2>Códice</h2></div><button class="close-btn" data-close="codexDialog">×</button></div>
     <div class="tabs">
       <button class="tab active" data-tab="lineage">Linaje</button>
+      <button class="tab" data-tab="chronicles">Crónicas</button>
       <button class="tab" data-tab="achievements">Logros</button>
       <button class="tab" data-tab="legacy">Legado</button>
       <button class="tab" data-tab="advisors">Consejeros</button>
@@ -252,11 +253,11 @@
     </div>
   </dialog>
 
-  <script src="content.js"></script>
-  <script src="cards-core.js"></script>
-  <script src="cards-arcs.js"></script>
+  <script src="content.js?v=2.20"></script>
+  <script src="cards-core.js?v=2.20"></script>
+  <script src="cards-arcs.js?v=2.20"></script>
   <script src="audio.js?v=2.17"></script>
   <script src="fx.js?v=2.18"></script>
-  <script src="game.js?v=2.17"></script>
+  <script src="game.js?v=2.20"></script>
 </body>
 </html>

@@ -7,17 +7,32 @@
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:#0b0b11;color:#f3efe7;font-family:Fraunces,"Iowan Old Style","Palatino Linotype",Georgia,serif}
 body{min-height:100vh;overflow-x:hidden;background:var(--bg)}
-body.season-spring{--season-tint:rgba(90,120,70,.12)}
-body.season-summer{--season-tint:rgba(160,110,40,.14)}
-body.season-autumn{--season-tint:rgba(140,70,40,.16)}
-body.season-winter{--season-tint:rgba(70,90,120,.16)}
-body.omen-plague{--season-tint:rgba(70,110,80,.28)}
-body.omen-war{--season-tint:rgba(120,40,40,.22)}
-body.omen-void{--season-tint:rgba(60,40,90,.32)}
+body.season-spring{--season-tint:rgba(90,120,70,.22)}
+body.season-summer{--season-tint:rgba(160,110,40,.24)}
+body.season-autumn{--season-tint:rgba(140,70,40,.26)}
+body.season-winter{--season-tint:rgba(70,90,120,.26)}
+body.omen-plague{--season-tint:rgba(70,110,80,.38)}
+body.omen-war{--season-tint:rgba(120,40,40,.32)}
+body.omen-void{--season-tint:rgba(60,40,90,.4)}
 .kingdom-bg{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;background:#07070b}
 .kingdom-bg:before{content:"";position:absolute;inset:0;z-index:0;background:url('img/hall.jpg?v=2') center 40%/cover no-repeat;filter:saturate(.92) brightness(.94) contrast(1.04);transition:filter .7s ease}
+body.season-spring .kingdom-bg:before{filter:saturate(1.05) brightness(1.02) contrast(1.02) hue-rotate(8deg)}
+body.season-summer .kingdom-bg:before{filter:saturate(1.12) brightness(1.06) contrast(1.04) hue-rotate(14deg)}
+body.season-autumn .kingdom-bg:before{filter:saturate(.95) brightness(.9) contrast(1.08) hue-rotate(-8deg)}
+body.season-winter .kingdom-bg:before{filter:saturate(.62) brightness(.78) contrast(1.1) hue-rotate(-18deg)}
+body.omen-plague .kingdom-bg:before{filter:saturate(.45) brightness(.72) contrast(1.08) hue-rotate(28deg)}
+body.omen-war .kingdom-bg:before{filter:saturate(.7) brightness(.7) contrast(1.12) hue-rotate(-22deg)}
+body.omen-void .kingdom-bg:before{filter:saturate(.4) brightness(.62) contrast(1.14) hue-rotate(-48deg)}
 .hall-candle{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 48vmin 40vmin at var(--cx,50%) var(--cy,44%),rgba(255,214,140,.22) 0%,rgba(255,186,96,.07) 40%,transparent 72%);mix-blend-mode:soft-light}
-.kingdom-bg:after{content:"";position:absolute;inset:0;z-index:2;background:
+.hall-veil{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;mix-blend-mode:multiply;transition:opacity .8s ease,background .8s ease}
+body.season-spring .hall-veil{opacity:.3;background:radial-gradient(ellipse at 50% 28%,#6a8a4a 0%,transparent 72%)}
+body.season-summer .hall-veil{opacity:.34;background:radial-gradient(ellipse at 62% 18%,#c4a050 0%,transparent 70%)}
+body.season-autumn .hall-veil{opacity:.36;background:radial-gradient(ellipse at 40% 42%,#8a4a28 0%,transparent 72%)}
+body.season-winter .hall-veil{opacity:.4;background:radial-gradient(ellipse at 50% 8%,#6a88aa 0%,#1a2430 100%)}
+body.omen-plague .hall-veil{opacity:.46;background:radial-gradient(ellipse at 50% 50%,#2a4a38 0%,#0a1810 100%)}
+body.omen-war .hall-veil{opacity:.44;background:radial-gradient(ellipse at 50% 62%,#5a2020 0%,#1a0808 100%)}
+body.omen-void .hall-veil{opacity:.5;background:radial-gradient(ellipse at 50% 40%,#3a2860 0%,#080610 100%)}
+.kingdom-bg:after{content:"";position:absolute;inset:0;z-index:3;background:
   radial-gradient(ellipse 34% 50% at 50% 52%,rgba(7,7,11,.42) 0%,rgba(7,7,11,.12) 46%,transparent 72%),
   linear-gradient(var(--season-tint),var(--season-tint));transition:background .8s ease}
 .app{position:relative;z-index:1;min-height:100vh;max-width:1080px;margin:auto;display:grid;grid-template-rows:auto auto 1fr auto;padding:0 22px}
@@ -87,6 +102,7 @@ button{font:inherit}
 #courtFx{position:fixed;inset:0;z-index:5;pointer-events:none}
 body.hall-dim .kingdom-bg:before{filter:saturate(.5) brightness(.4) contrast(1.06)}
 body.hall-dim .hall-candle{opacity:.18}
+body.hall-dim .hall-veil{opacity:.2}
 .card.tint-left{box-shadow:var(--shadow),inset 0 0 0 3px rgba(182,84,84,.45)}
 .card.tint-right{box-shadow:var(--shadow),inset 0 0 0 3px rgba(106,154,121,.45)}
 .swipe-label{position:absolute;top:46%;left:18px;right:18px;opacity:0;pointer-events:none;z-index:4;text-align:center;transition:opacity .12s}
@@ -115,6 +131,8 @@ body.hall-dim .hall-candle{opacity:.18}
 .sil.elian .sil-head{height:42px}
 .sil.mara{filter:drop-shadow(0 8px 20px rgba(0,0,0,.4)) saturate(.7)}
 .sil.odon .sil-body{background:#c9c0a8}
+.sil.iva .sil-body{background:#b7c4b0}
+.sil.iva .sil-head{width:32px;left:27px}
 .sil.soraya .sil-head{border-radius:40% 60% 50% 50%}
 .sil.naia .sil-head{background:#c9b7e0}
 .sil.garrik .sil-body{clip-path:polygon(10% 0,90% 0,100% 100%,0 100%)}
@@ -245,6 +263,7 @@ body.hall-dim .hall-candle{opacity:.18}
 .map-legend b{color:#e5dfd3}
 .region{fill:#1d1c27;stroke:#3b3546;stroke-width:1.2;cursor:pointer}
 .region.on{fill:color-mix(in srgb,var(--house) 28%,#1d1c27);stroke:var(--house)}
+.region.built{fill:color-mix(in srgb,var(--house) 42%,#243028);stroke:var(--house);stroke-dasharray:3 2}
 .region.hurt{fill:#3a2428;stroke:#8d4141}
 .region.war{fill:#3a2020;stroke:#b65454}
 .spark{width:100%;height:88px;display:block;margin:10px 0 18px}
@@ -261,6 +280,10 @@ body.hall-dim .hall-candle{opacity:.18}
 .lineage-events span{font-size:10px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:#d2c8b4;background:#12121a}
 .lineage-pass{margin-top:8px;color:var(--house);font-size:12px}
 .lineage-fork{margin-top:6px;color:#9a7a7a;font-size:11px;padding-left:12px;border-left:2px solid #4a3030}
+.chronicle-book{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;background:#12121a}
+.chronicle-book b{display:block;color:var(--house);margin-bottom:4px}
+.chronicle-book small{display:block;color:#8f899b;font-size:11px;margin-bottom:8px}
+.chronicle-book div{color:#d2c8b4;font-size:12px;line-height:1.45}
 
 @keyframes toastin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes pulse{50%{box-shadow:0 0 0 3px rgba(182,84,84,.12)}}
@@ -319,3 +342,4 @@ body.reduce-motion .toast,
 body.reduce-motion .fx-delta,
 body.reduce-motion .stat{animation:none!important;transition:none!important}
 body.reduce-motion .hall-candle{animation:none;opacity:.82}
+body.reduce-motion .hall-veil{transition:none}

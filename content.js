@@ -10,12 +10,14 @@ function C(id,advisor,text,left,right,opt={}){
     years:opt.years??1,interrupt:!!opt.interrupt,season:opt.season||null,
     minAge:opt.minAge||0,maxAge:opt.maxAge||200,ally:!!opt.ally,foe:!!opt.foe,
     coda:opt.coda||null,tutorial:!!opt.tutorial,pack:opt.pack||null,
-    consult:opt.consult||null,place:opt.place||null,work:opt.work||null
+    consult:opt.consult||null,place:opt.place||null,work:opt.work||null,
+    needsHeir:!!opt.needsHeir,needsHeirNamed:!!opt.needsHeirNamed,minHeirAge:opt.minHeirAge||0,
+    allowGone:!!opt.allowGone
   };
 }
 function O(label,effects={},extra={}){return {label,effects,...extra}}
 
-const VERSION='2.3.0';
+const VERSION='2.4.0';
 const STAT_KEYS=['pueblo','tesoro','ejercito','saber'];
 const STAT_LABELS={pueblo:'Pueblo',tesoro:'Tesoro',ejercito:'Ejército',saber:'Saber'};
 const STAT_ICONS={pueblo:'♟',tesoro:'◆',ejercito:'⚔',saber:'✦'};
@@ -44,18 +46,19 @@ const ADVISORS={
   naia:{name:'Naia Brumal',title:'Astróloga Proscrita',glyph:'☽',mood:'✦',sil:'naia',portrait:'img/advisor-naia.jpg'},
   garrik:{name:'Garrik del Umbral',title:'Embajador del Norte',glyph:'♞',mood:'❄',sil:'garrik',portrait:'img/advisor-garrik.jpg'},
   lupo:{name:'Lupo',title:'Bufón y Oído del Palacio',glyph:'☼',mood:'♣',sil:'lupo',portrait:'img/advisor-lupo.jpg'},
-  ferran:{name:'Ferran Cobre',title:'Maestro de Gremios',glyph:'⚒',mood:'⬡',sil:'ferran',portrait:'img/advisor-ferran.jpg'}
+  ferran:{name:'Ferran Cobre',title:'Maestro de Gremios',glyph:'⚒',mood:'⬡',sil:'ferran',portrait:'img/advisor-ferran.jpg'},
+  iva:{name:'Iva Grís',title:'Médica de la Corte',glyph:'⚕',mood:'✧',sil:'iva'}
 };
 
 const REGIONS=[
-  {id:'capital',name:'Valdoria',d:'M118 92 L148 70 L176 88 L168 128 L122 130 Z',on:s=>true,hurt:s=>s.hidden.salud<30},
-  {id:'puerto',name:'Puerto Azul',d:'M40 150 L88 138 L96 172 L52 186 Z',on:s=>s.flags.includes('puerto_franco')||s.flags.includes('mapa_costero'),hurt:s=>s.flags.includes('schism_open')},
-  {id:'valle',name:'Valle Hondo',d:'M96 96 L118 92 L122 130 L90 138 Z',on:s=>s.flags.includes('calzada_sur')},
-  {id:'marismas',name:'Las Marismas',d:'M88 138 L122 130 L140 168 L96 172 Z',on:s=>s.flags.includes('flood_canal')||s.flags.includes('flood_dike'),hurt:s=>s.flags.includes('flood_on')||s.flags.includes('flood_active')},
+  {id:'capital',name:'Valdoria',d:'M118 92 L148 70 L176 88 L168 128 L122 130 Z',on:s=>true,hurt:s=>s.hidden.salud<30,mark:s=>s.flags.includes('hospital')?'Hospital':s.flags.includes('imprenta')?'Imprenta':''},
+  {id:'puerto',name:'Puerto Azul',d:'M40 150 L88 138 L96 172 L52 186 Z',on:s=>s.flags.includes('puerto_franco')||s.flags.includes('mapa_costero')||s.flags.includes('banco'),hurt:s=>s.flags.includes('schism_open'),mark:s=>s.flags.includes('banco')?'Banco':s.flags.includes('puerto_franco')?'Puerto franco':''},
+  {id:'valle',name:'Valle Hondo',d:'M96 96 L118 92 L122 130 L90 138 Z',on:s=>s.flags.includes('calzada_sur')||s.flags.includes('escuela'),hurt:s=>false,mark:s=>s.flags.includes('escuela')?'Escuela':''},
+  {id:'marismas',name:'Las Marismas',d:'M88 138 L122 130 L140 168 L96 172 Z',on:s=>s.flags.includes('flood_canal')||s.flags.includes('flood_dike'),hurt:s=>s.flags.includes('flood_on')||s.flags.includes('flood_active'),mark:s=>s.flags.includes('flood_canal')?'Canal':''},
   {id:'piedra',name:'Piedra Alta',d:'M148 70 L188 48 L196 92 L176 88 Z',on:s=>s.flags.includes('piedra_reconquista'),hurt:s=>s.flags.includes('piedra_perdida')},
-  {id:'frontera',name:'Frontera oriental',d:'M176 88 L196 92 L210 130 L168 128 Z',on:s=>s.flags.includes('pacto_norte')},
+  {id:'frontera',name:'Frontera oriental',d:'M176 88 L196 92 L210 130 L168 128 Z',on:s=>s.flags.includes('pacto_norte')||s.flags.includes('academia_militar'),hurt:s=>false,mark:s=>s.flags.includes('academia_militar')?'Academia':''},
   {id:'isla',name:'Isla Bruma',d:'M28 168 L52 186 L44 208 L22 196 Z',on:s=>s.flags.includes('mapa_costero')},
-  {id:'sur',name:'Viñedos del Sur',d:'M122 130 L168 128 L160 176 L140 168 Z',on:s=>s.flags.includes('calzada_sur')||s.flags.includes('silos'),hurt:s=>s.flags.includes('famine_active')},
+  {id:'sur',name:'Viñedos del Sur',d:'M122 130 L168 128 L160 176 L140 168 Z',on:s=>s.flags.includes('calzada_sur')||s.flags.includes('silos'),hurt:s=>s.flags.includes('famine_active'),mark:s=>s.flags.includes('silos')?'Silos':s.flags.includes('calzada_sur')?'Calzada':''},
   {id:'paso',name:'Paso de Ceniza',d:'M188 48 L226 40 L230 78 L196 92 Z',on:s=>s.flags.includes('war_peace')||s.flags.includes('war_tribute'),hurt:s=>s.flags.includes('war_active')}
 ];
 
@@ -72,7 +75,8 @@ const deathReasons={
   betrayal:['La copa llegó antes que la guardia. Los cuatro pilares seguían en pie. El oficio, no.'],
   betrayal_gold:['El vino tenía un dejo de cobre. Bruno juró que los libros cerraban. Cerraban, sí: sobre tu nombre.','Dormiste con el tesoro en calma. El copero no. Por eso despertó el reino sin vos.'],
   betrayal_protocol:['El ceremonial reservaba un asiento a tu izquierda. Desde ahí se corta la carne. Esa noche, también el reinado.','Firmaste de más y leíste de menos. El protocolo es un cuchillo que sonríe.'],
-  betrayal_cipher:['El correo no pedía respuesta. Pedía un cambio de guardia a medianoche. La medianoche cumplió.','Mara habría avisado. O avisó, y alguien leyó antes que vos.']
+  betrayal_cipher:['El correo no pedía respuesta. Pedía un cambio de guardia a medianoche. La medianoche cumplió.','Mara habría avisado. O avisó, y alguien leyó antes que vos.'],
+  abdicate:['Dejó la corona sobre la mesa, alineada con el tintero. El Consejo tardó un día en creer que no era una broma de Lupo.','Abdicó de pie. Dijo que el trono era un oficio, no un destino. El heredero no dijo nada: ya estaba sentado.']
 };
 
 const DELAYED={
@@ -94,7 +98,9 @@ const DELAYED={
   plot_gold_knock:{advisor:'lupo',text:'En la mesa hay un cubierto de más. Nadie se sienta ahí. El copero limpia ese lugar dos veces y no canta.',left:O('Es un cubierto sucio',{pueblo:1},{special:'plotIgnore',hidden:{autoridad:2}}),right:O('Contá los cubiertos',{saber:2},{special:'plotLook'}),tags:['consecuencia','arco'],chain:'La mesa de Bruno',interrupt:true,years:0,consult:'Si hay un cubierto de más, hay un oficio de menos.'},
   plot_protocol_knock:{advisor:'ines',text:'Falta una rúbrica en el protocolo del banquete. Alguien la arrancó. El espacio sigue caliente, como una silla recién ocupada.',left:O('Reescribí el ceremonial',{saber:1},{special:'plotIgnore',hidden:{autoridad:3}}),right:O('¿Quién rasgó la hoja?',{saber:3},{special:'plotLook'}),tags:['consecuencia','arco'],chain:'Firma del protocolo',interrupt:true,years:0,consult:'El protocolo no se rasga solo. Se rasga para que entre un cuchillo.'},
   plot_cipher_knock:{advisor:'mara',text:'Llegó un correo sin sello. El papel huele a Norte y a prisa. Nadie lo pidió. Yo tampoco, y eso me ofende.',left:O('Al fuego',{ejercito:2},{special:'plotIgnore',hidden:{inteligencia:-4}}),right:O('Leé conmigo',{saber:3},{special:'plotLook'}),tags:['consecuencia','arco'],chain:'Correo cifrado',interrupt:true,years:0,consult:'Un correo sin sello es una daga que todavía no eligió cuándo.'},
-  age_death:{advisor:'odon',text:'El pulso se va. No es peste ni daga: es el oficio, cumplido. Pedí que nadie toque la corona hasta que el Consejo nombre la mano que sigue.',left:O('Cerrá los ojos',{},{special:'ageDeath'}),right:O('Llamad al heredero',{},{special:'ageDeath'}),tags:['consecuencia','dinastia'],chain:'El cuerpo cedió',interrupt:true,years:0,consult:'Odón no está preguntando. Está informando.'}
+  age_death:{advisor:'odon',text:'El pulso se va. No es peste ni daga: es el oficio, cumplido. Pedí que nadie toque la corona hasta que el Consejo nombre la mano que sigue.',left:O('Cerrá los ojos',{},{special:'ageDeath'}),right:O('Llamad al heredero',{},{special:'ageDeath'}),tags:['consecuencia','dinastia'],chain:'El cuerpo cedió',interrupt:true,years:0,consult:'Odón no está preguntando. Está informando.'},
+  kin_return:{advisor:'ines',text:'{kin} cruzó la puerta sin pedirle permiso al ceremonial. Dice que la cuna era la misma y la corona, no. Quiere tierra o un asiento.',left:O('Sin tierra',{ejercito:3,pueblo:-4},{hidden:{autoridad:3},special:'kinRefuse'}),right:O('Dales un feudo',{tesoro:-7,pueblo:3},{special:'kinSettle'}),tags:['consecuencia','dinastia'],chain:'La cuna que no heredó',interrupt:true,years:0},
+  odon_farewell:{advisor:'odon',text:'Iva Grís ya sabe dónde está cada vena de palacio. Yo puedo quedarme un invierno más. O ceder la silla, que no se hereda: se deja.',left:O('Quedate un invierno',{saber:1},{special:'odonStay',relationship:{odon:2}}),right:O('La silla es de Iva',{saber:2,pueblo:1},{special:'odonGone'}),tags:['consecuencia','dinastia','salud'],chain:'El oficio se cede',interrupt:true,years:0,allowGone:true,consult:'Odón no pide permiso. Informa el recambio.'}
 };
 const DETONANTES={
   plague_active:'Fiebre de Vidrio',war_active:'Tres Banderas',void_active:'Estrella negra',void_door:'La puerta',
@@ -102,8 +108,13 @@ const DETONANTES={
   mutiny_on:'Motín de la Guardia',flood_on:'Inundación de las Marismas',heresy_on:'Herejía de la estrella',
   crisis_active:'Crisis dinástica',plot_named:'El nombre en la mesa',plot_foiled:'La daga no alcanzó',
   casado:'Nupcias de Estado',testamento:'Testamento',constitucion:'Carta de Derechos',
-  hospital:'Hospital real',imprenta:'La imprenta',plague_cured:'Cura de la fiebre',war_peace:'Paz de Ceniza',
-  segundo_hijo:'Segunda cuna',regencia:'Regencia',abdicate_rumor:'Rumores de abdicación'
+  hospital:'El hospital de la fortaleza',imprenta:'La imprenta de Ferran',plague_cured:'Cura de la fiebre',war_peace:'Paz de Ceniza',
+  escuela:'La escuela del monasterio',banco:'El banco mercante',silos:'Los silos reales',
+  calzada_sur:'La calzada del Sur',academia_militar:'La academia militar',puerto_franco:'Puerto Azul zona franca',
+  segundo_hijo:'Segunda cuna',regencia:'Regencia',abdicate_rumor:'Rumores de abdicación',
+  odon_gone:'Odón deja el oficio',iva_court:'Iva toma el pulso',kin_returned:'El pariente volvió',
+  kin_settled:'Feudo para la otra cuna',kin_spurned:'La otra cuna, sin tierra',
+  heir_named:'Heredero nombrado',heir_married:'Boda del heredero',abdicate_done:'Abdicación'
 };
 
 const PROCEDURAL={
@@ -146,7 +157,10 @@ const ACHIEVEMENTS=[
   ['child-crown','Cuna y cetro','Un menor de dieciséis heredó la corona.','♜',s=>(s.lineage||[]).some(r=>r.heirAge>0&&r.heirAge<16)],
   ['named-knife','El nombre en la palma','Desenmascará una traición y viví para contarla.','🗡',s=>s.flags.includes('plot_foiled')&&s.flags.includes('plot_named')],
   ['cup-refused','La copa retirada','Sobreviví a una conspiración sin conocer el nombre.','◇',s=>s.flags.includes('plot_foiled')&&!s.flags.includes('plot_named')],
-  ['by-dagger','Oficio de cuchillo','Morí por una traición, no por los cuatro pilares.','♠',s=>(s.meta.lifetimeDeaths.betrayal||0)>=1]
+  ['by-dagger','Oficio de cuchillo','Morí por una traición, no por los cuatro pilares.','♠',s=>(s.meta.lifetimeDeaths.betrayal||0)>=1],
+  ['let-go','La corona se deja','Abdicá en el heredero.','♜',s=>(s.meta.lifetimeDeaths.abdicate||0)>=1],
+  ['new-pulse','Otro pulso','Que Iva herede el oficio de Odón.','⚕',s=>s.flags.includes('iva_court')||s.meta.discoveredAdvisors.includes('iva')],
+  ['other-cradle','La otra cuna','Que vuelva quien no heredó.','♟',s=>s.flags.includes('kin_returned')||(s.meta.chronicles||[]).some(b=>(b.lineage||[]).some(r=>(r.fork||[]).length))]
 ];
 
 const PERKS=[
@@ -184,13 +198,14 @@ const EDICT_LABELS={
   flood_canal:'El canal de las Marismas',schism_healed:'Los dos ritos',famine_mercy:'El perdón del Sur',
   mutiny_charter:'La carta de la Guardia',boda_real:'La boda de Estado',casado:'El matrimonio real',
   pan_fijo:'El precio del pan',canales_abiertos:'Los canales del jardín',cementerio_civil:'El cementerio civil',
-  plot_foiled:'La copa retirada'
+  plot_foiled:'La copa retirada',odon_gone:'El retiro de Odón',iva_court:'Iva Grís en la corte',
+  kin_settled:'El feudo de la otra cuna',kin_spurned:'La otra cuna, sin tierra',heir_married:'La boda del heredero'
 };
 
 function whisperFor(state){
   const w=[];
   if(state.hidden.corrupcion>60)w.push('Bruno cuenta monedas que no suenan a plata.');
-  if(state.hidden.salud<35)w.push('Odón tose y mira el pozo como a un acusado.');
+  if(state.hidden.salud<35)w.push(state.flags.includes('odon_gone')?'Iva mira el pozo como a un acusado.':'Odón tose y mira el pozo como a un acusado.');
   if(state.hidden.inteligencia>70)w.push('Mara sonríe demasiado poco para lo que sabe.');
   if(state.hidden.autoridad<30)w.push('Inés endereza papeles como quien endereza un reino.');
   if(state.hidden.autoridad>75)w.push('Hasta Lupo baja la voz cuando pasás.');
@@ -209,8 +224,10 @@ function whisperFor(state){
   if(state.flags.includes('regencia'))w.push('El sello lo firma otra mano. El niño mira.');
   else if(state.rulerAge>=65)w.push('El trono es más alto que el pulso.');
   else if(state.rulerAge>=55)w.push('Inés habla de testamento como quien habla del tiempo: sin pedirlo.');
-  else if(state.rulerAge>=40)w.push('Odón cuenta las pausas entre una palabra y la siguiente.');
+  else if(state.rulerAge>=40)w.push(state.flags.includes('odon_gone')?'Iva cuenta las pausas entre una palabra y la siguiente.':'Odón cuenta las pausas entre una palabra y la siguiente.');
   if(state.heir?.name)w.push(`En los pasillos ya dicen ${state.heir.name} como quien ensaya el futuro.`);
+  if(state.flags.includes('odon_gone'))w.push('La silla de Odón está corrida. Iva no la mueve.');
+  if((state.persistent?.shadowKin||[])[0]?.name)w.push(`Hay quien todavía dice ${state.persistent.shadowKin[0].name} cuando habla de la cuna.`);
   return w;
 }
 
