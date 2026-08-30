@@ -1352,6 +1352,32 @@ function bind(){
 
 function registerPWA(){if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{})}
 
+function hideIntro(){
+  const box=$('#intro');if(!box)return;
+  box.classList.add('is-out');
+  document.body.classList.remove('intro-lock');
+  setTimeout(()=>{box.classList.add('is-gone');box.setAttribute('aria-hidden','true')},720);
+}
+function openStartMenu(daily){
+  if(daily)$('#seedInput').value=dailySeed();
+  $('#startDialog').showModal();
+}
+function playIntro(done){
+  const box=$('#intro');
+  if(!box){document.body.classList.remove('intro-lock');done();return}
+  document.body.classList.add('intro-lock');
+  const finish=()=>{
+    if(box.dataset.done==='1')return;
+    box.dataset.done='1';
+    hideIntro();
+    setTimeout(done,420);
+  };
+  box.classList.add('is-studio');
+  setTimeout(()=>{box.classList.add('is-studio-out')},3000);
+  setTimeout(()=>{box.classList.remove('is-studio','is-studio-out');box.classList.add('is-game')},3500);
+  setTimeout(()=>box.classList.add('is-game-out'),8540);
+  setTimeout(finish,9100);
+}
 function boot(){
   cacheEls();bind();syncMusicBtn();
   if(typeof CourtFx!=='undefined')CourtFx.init();
@@ -1360,8 +1386,7 @@ function boot(){
   $('#continueBtn').classList.toggle('hidden',!has);
   $('#showFoundBtn').classList.toggle('hidden',!has);
   $('#foundFields').classList.toggle('collapsed',has);
-  if(daily){$('#seedInput').value=dailySeed();$('#startDialog').showModal()}
-  else $('#startDialog').showModal();
+  playIntro(()=>openStartMenu(daily));
   registerPWA();
 }
 boot();

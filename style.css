@@ -40,7 +40,8 @@ body.omen-void .hall-veil{opacity:.5;background:radial-gradient(ellipse at 50% 4
 button{font:inherit}
 .brand,.icon-btn,.footer button,.text-btn{border:0;background:none;color:inherit;cursor:pointer}
 .brand{display:flex;align-items:center;gap:10px;text-align:left}
-.brand-crown{width:37px;height:37px;border:1px solid color-mix(in srgb,var(--house) 45%,#504867);border-radius:10px;display:grid;place-items:center;color:var(--house);font-size:20px;font-family:Georgia,serif}
+.brand-crown{width:37px;height:37px;border:0;border-radius:10px;display:grid;place-items:center;padding:0;overflow:hidden;background:transparent;flex-shrink:0}
+.brand-crown img{width:100%;height:100%;display:block;object-fit:cover}
 .brand strong{display:block;letter-spacing:.02em}
 .brand small,.year-wrap span{display:block;color:var(--muted);font-size:11px;margin-top:2px;font-family:"Source Sans 3",Inter,ui-sans-serif,system-ui,sans-serif}
 .year-wrap{text-align:center;min-width:0}
@@ -170,6 +171,8 @@ body.hall-dim .hall-veil{opacity:.2}
 .start-modal{width:590px}
 .modal-scroll{padding:34px}
 .sigil{width:70px;height:70px;border:1px solid color-mix(in srgb,var(--house) 40%,#514867);border-radius:22px;display:grid;place-items:center;margin:0 auto 14px;font-size:34px;color:var(--house);background:#171620}
+.sigil.mark{border:0;background:transparent;padding:0;overflow:hidden;width:92px;height:92px;border-radius:24px;box-shadow:0 12px 36px rgba(0,0,0,.45)}
+.sigil.mark img{width:100%;height:100%;display:block;object-fit:cover}
 .eyebrow{text-transform:uppercase;letter-spacing:.17em;color:var(--house);font-size:9px;font-weight:800;margin:0 0 7px;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
 .start-modal .eyebrow,.start-modal h1,.start-modal h2,.start-modal .lead{text-align:center}
 .start-modal h1,.modal h2{margin:0 0 12px}
@@ -343,3 +346,26 @@ body.reduce-motion .fx-delta,
 body.reduce-motion .stat{animation:none!important;transition:none!important}
 body.reduce-motion .hall-candle{animation:none;opacity:.82}
 body.reduce-motion .hall-veil{transition:none}
+
+body.intro-lock{overflow:hidden}
+.intro{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:#050508;color:#f3efe7;overflow:hidden}
+.intro:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 50% 42% at 50% 48%,rgba(20,16,12,.0) 0%,rgba(5,5,8,.55) 72%,#050508 100%)}
+.intro.is-out{opacity:0;transition:opacity .7s ease;pointer-events:none}
+.intro.is-gone{display:none}
+.intro-beat{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;transform:translateY(8px) scale(.98);pointer-events:none}
+.intro.is-studio .intro-studio,.intro.is-game .intro-game{opacity:1;transform:none;transition:opacity .7s ease,transform .8s ease}
+.intro.is-studio-out .intro-studio,.intro.is-game-out .intro-game{opacity:0;transform:scale(.96);transition:opacity .45s ease,transform .45s ease}
+.intro-ss{width:min(240px,56vw);height:auto;filter:drop-shadow(0 18px 40px rgba(0,0,0,.55))}
+.intro-presents{margin:10px 0 0;letter-spacing:.38em;font-size:20px;font-weight:700;color:#c6a45b;font-family:"Source Sans 3",Inter,ui-sans-serif,system-ui,sans-serif;opacity:0;transform:translateY(6px)}
+.intro.is-studio .intro-presents{opacity:1;transform:none;transition:opacity .6s ease .35s,transform .6s ease .35s}
+.intro-crown{width:min(168px,42vw);height:auto;border-radius:28px;box-shadow:0 22px 70px rgba(0,0,0,.6),0 0 48px rgba(224,112,48,.18)}
+.intro-eyebrow{margin:8px 0 0;letter-spacing:.22em;font-size:10px;font-weight:700;color:#c6a45b;font-family:"Source Sans 3",Inter,ui-sans-serif,system-ui,sans-serif;opacity:0}
+.intro-title{margin:0;font-size:clamp(32px,6vw,52px);font-weight:650;letter-spacing:.01em;opacity:0}
+.intro-en{margin:0;letter-spacing:.34em;font-size:11px;color:#8f899b;font-family:"Source Sans 3",Inter,ui-sans-serif,system-ui,sans-serif;opacity:0}
+.intro.is-game .intro-eyebrow{opacity:1;transition:opacity .55s ease .25s}
+.intro.is-game .intro-title{opacity:1;transition:opacity .7s ease .45s}
+.intro.is-game .intro-en{opacity:1;transition:opacity .7s ease .7s}
+@media(prefers-reduced-motion:reduce){
+  .intro,.intro-beat,.intro-presents,.intro-eyebrow,.intro-title,.intro-en{transition:none!important}
+}
+body.reduce-motion .intro,body.reduce-motion .intro-beat{transition:none!important}

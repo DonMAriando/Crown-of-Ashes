@@ -9,18 +9,30 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;600;700&display=swap" />
-  <link rel="stylesheet" href="style.css?v=2.20" />
+  <link rel="stylesheet" href="style.css?v=2.26" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" href="icon.png?v=2.22" type="image/png" />
+  <link rel="apple-touch-icon" href="icon.png?v=2.22" />
 </head>
 <body>
+  <div id="intro" class="intro" role="dialog" aria-modal="true" aria-label="Presentación">
+    <div class="intro-beat intro-studio">
+      <img class="intro-ss" src="img/software-society.png?v=2.24" alt="Software Society" />
+      <p class="intro-presents">PRESENTA</p>
+    </div>
+    <div class="intro-beat intro-game">
+      <img class="intro-crown" src="icon.png?v=2.22" alt="" />
+      <p class="intro-eyebrow">UNA CRÓNICA DE VALDORIA</p>
+      <h1 class="intro-title">Corona de Ceniza</h1>
+      <p class="intro-en">CROWN OF ASHES</p>
+    </div>
+  </div>
   <div class="kingdom-bg" id="kingdomBg" aria-hidden="true"><div class="hall-candle" id="hallCandle"></div><div class="hall-veil" id="hallVeil"></div></div>
   <canvas id="courtFx" aria-hidden="true"></canvas>
   <div id="app" class="app">
     <header class="topbar">
       <button id="brandBtn" class="brand" aria-label="Abrir menú">
-        <span class="brand-crown">♜</span>
+        <span class="brand-crown"><img src="icon.png?v=2.22" alt="" /></span>
         <span><strong>Corona de Ceniza</strong><small id="reignLabel">Reinado I</small></span>
       </button>
       <div class="year-wrap">
@@ -101,7 +113,7 @@
 
   <dialog id="startDialog" class="modal start-modal">
     <div class="modal-scroll">
-      <div class="sigil">♜</div>
+      <div class="sigil mark" aria-hidden="true"><img src="icon.png?v=2.22" alt="" /></div>
       <p class="eyebrow">UNA CRÓNICA PROCEDURAL</p>
       <h1>Corona de Ceniza</h1>
       <p class="lead">Goberná Valdoria a través de generaciones. Cada decisión deja una cicatriz; cada muerte, una herencia.</p>
@@ -258,6 +270,6 @@
   <script src="cards-arcs.js?v=2.20"></script>
   <script src="audio.js?v=2.17"></script>
   <script src="fx.js?v=2.18"></script>
-  <script src="game.js?v=2.20"></script>
+  <script src="game.js?v=2.26"></script>
 </body>
 </html>
