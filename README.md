@@ -30,7 +30,7 @@ El botón ♪ corta solo las camas. Los toques al deslizar, sellar o consultar s
 
 ## Qué hay ahora
 
-- Coronación tutorial, pistas en la carta (también en el teléfono) y números que saltan al decidir. Las placas dicen el pilar y el sentido: verde sube, rojo baja.
+- Coronación tutorial, pistas en la carta (también en el teléfono) y números que saltan al decidir. Las placas dicen el pilar en tinta; el punto (o el número) dice si sube o baja.
 - ~200 cartas escritas, peticiones procedurales con memoria de lugares, estaciones y doce consejeros que se vuelven aliados o enemigos.
 - Arcos largos: Fiebre de Vidrio, Tres Banderas, Observatorio Negro, República de Tinta, Hambruna del Sur, Cisma del Estuario, crisis dinástica, viaje a Sahr, motín, boda real, inundación, herejía de la estrella.
 - Tres conspiraciones (copa, protocolo, correo): una por corona, avisada, pueden matar sin tocar 0 ni 100. Si te matan, el heredero hereda al asesino.
@@ -77,7 +77,7 @@ Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferenci
 - Los retratos y las escenas son arte generado para esta corte, no pinturas licenciadas. El hueco de la carta es una franja ancha (cara y hombros), no el óleo entero.
 - Las camas son pistas Opus en `musica/` (Suno). Si el navegador no reproduce Opus, busca el mismo nombre en MP3. Los toques de las cartas siguen en Web Audio. El botón ♪ corta solo las camas.
 - Chrome (y otros) no sueltan el audio hasta el primer clic. Fundar, continuar o tocar ♪ basta.
-- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.30` al momento de escribir esto).
+- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.34` al momento de escribir esto).
 
 Al publicar un cambio de interfaz o de motor: bump de `style.css?v=` / `audio.js?v=` / `fx.js?v=` / `game.js?v=` en **los dos** HTML, bump de `CACHE` en `sw.js`, y una fila nueva arriba de la bitácora.
 
@@ -87,6 +87,7 @@ Qué se subió a `main`, cuándo y con qué commit. Lo más nuevo va arriba. Los
 
 | Fecha | Commit | Cómo llegó | Qué se puede hacer desde entonces |
 |---|---|---|---|
+| 1 sep 2026 | [`d512fce`](https://github.com/DonMAriando/Crown-of-Ashes/commit/d512fce) | Push a `main` | Las placas de elección ya no gritan: el nombre de la decisión manda; los pilares quedan en tinta chica, color solo en el punto, pegados a la carta. En el escritorio no se duplican sobre el swipe. |
 | 1 sep 2026 | [`6c2e4c4`](https://github.com/DonMAriando/Crown-of-Ashes/commit/6c2e4c4) | Push a `main` | Cada semilla dibuja un mapa distinto. El imperio arranca chico, crece con los años y los arcos, y puede perder tierras. Si cae la última, el reinado termina; al heredero lo coronan señor del resto. Las placas de elección nombran el pilar (verde/rojo). Contenido 2.5.1. |
 | 1 sep 2026 | [`9afd135`](https://github.com/DonMAriando/Crown-of-Ashes/commit/9afd135) | Push a `main` | El mapa de Valdoria queda a la vista en la mesa. Late cuando una decisión mancha el terreno; si la carta mira una región, esa zona se ilumina. Tocarlo abre el Códice en **Mapa**. |
 | 30 ago 2026 | [`6167905`](https://github.com/DonMAriando/Crown-of-Ashes/commit/6167905) | Push a `main` | Intro obligatoria: Software Society presenta, después el título con el icono pintado. No hay Saltar. Favicon y PWA usan `icon.png`. |
