@@ -52,7 +52,7 @@ function initialState(seed,dynasty,mode,meta,house){
     relationships:Object.fromEntries(Object.keys(ADVISORS).map(k=>[k,0])),
     history:[],samples:[],recent:[],seen:{},onceSeen:[],delayed:[],forced:[],
     currentCard:null,season:0,agendaBias:null,lastAgenda:0,lastConsult:-99,consulted:false,
-    lastUltimatum:{},sealed:false,pendingSide:null,snapshot:null,busy:false,
+    lastUltimatum:{},sealed:false,pendingSide:null,snapshot:null,busy:false,realm:null,
     meta,settings:{sound:true,hints:true,music:readMusicPref(),reduceMotion:false},endingShown:[]
   };
 }
@@ -66,6 +66,8 @@ function patchState(s){
   merged.meta={...defaultMeta(),...merged.meta};
   merged.busy=false;merged.pendingSide=null;
   if(!merged.currentCard||!merged.currentCard.left||!merged.currentCard.right)merged.currentCard=null;
+  if(!merged.realm||!Array.isArray(merged.realm.layout))merged.realm=generateRealm(merged.seed);
+  if(merged.realm&&!merged.realm.seat)merged.realm.seat=(merged.realm.home||[])[0]||'capital';
   return merged;
 }
 
@@ -76,6 +78,7 @@ const el={};
 function cacheEls(){
   ['card','cardText','speakerName','speakerTitle','portraitGlyph','advisorMood','cardTag','rarityTag',
    'leftText','rightText','leftEffects','rightEffects','leftBtnText','rightBtnText','swipeLeftText','swipeRightText',
+   'leftBtnFx','rightBtnFx','swipeLeftFx','swipeRightFx',
    'rulerName','yearLabel','reignLabel','ageLabel','heirLabel','seasonLabel','omens','whisper','legacyValue','chronicleCount',
    'seedReadout','soundToggle','hintToggle','musicToggle','motionToggle','consultBtn','consultHint','cardEcho','fxLayer','portraitImg','deathArt','musicBtn','realmMap','realmMapSvg']
     .forEach(id=>el[id]=$('#'+id));
@@ -244,6 +247,280 @@ function rememberPlace(place,work){
 function discoverAdvisor(id){if(id&&!state.meta.discoveredAdvisors.includes(id))state.meta.discoveredAdvisors.push(id)}
 function relOf(id){return state.relationships[id]||0}
 
+function shuffleIn(g,arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=g.int(0,i);[a[i],a[j]]=[a[j],a[i]]}return a}
+function regionName(id){
+  if(NEIGHBOR_LABELS[id])return NEIGHBOR_LABELS[id];
+  return (REGION_DEFS.find(r=>r.id===id)||{}).name||id;
+}
+function generateRealm(seed){
+  const g=new RNG(String(seed||'0')+':valormap',0);
+  const spin=g.next()*Math.PI*2;
+  const CX=130,CY=100;
+  const jag=()=>Array.from({length:g.int(6,8)},()=>0.7+g.next()*0.52);
+  const layout=[];
+  layout.push({id:'capital',kind:'land',cx:CX,cy:CY,r:26+g.next()*4,jag:jag()});
+  const provinces=shuffleIn(g,['puerto','valle','marismas','piedra','frontera','isla','sur','paso']);
+  provinces.forEach((id,i)=>{
+    const a=spin+i*(Math.PI*2/8)+(g.next()-.5)*.32;
+    const dist=50+g.next()*16;
+    layout.push({id,kind:'land',cx:clamp(CX+Math.cos(a)*dist,22,238),cy:clamp(CY+Math.sin(a)*dist,22,200),r:15+g.next()*7,jag:jag()});
+  });
+  shuffleIn(g,['norte','sahr','ceniza']).forEach((id,i)=>{
+    const a=spin+.4+i*(Math.PI*2/3)+(g.next()-.5)*.45;
+    const dist=94+g.next()*10;
+    layout.push({id,kind:'neighbor',cx:clamp(CX+Math.cos(a)*dist,16,244),cy:clamp(CY+Math.sin(a)*dist,18,212),r:13+g.next()*5,jag:jag()});
+  });
+  const inner=['valle','sur','marismas','puerto'];
+  const home=['capital',inner[g.int(0,inner.length-1)]];
+  if(g.chance(.36)){
+    const extra=inner.filter(x=>!home.includes(x));
+    if(extra.length)home.push(extra[g.int(0,extra.length-1)]);
+  }
+  const veiled=g.chance(.58)?[g.pick(['norte','sahr','ceniza'])]:[];
+  return {spin,layout,home,claimed:home.slice(),revealed:home.slice(),lost:[],pact:[],veiled,seat:'capital',kinSeat:null,pendingSeat:null,fallen:null,rebuiltAt:1};
+}
+function ensureRealm(){
+  if(!state)return null;
+  if(!state.realm||!Array.isArray(state.realm.layout)||state.realm.layout.length<4)state.realm=generateRealm(state.seed);
+  return state.realm;
+}
+function landClaimedByFlags(id){
+  if(id==='puerto')return hasFlag('puerto_franco')||hasFlag('banco');
+  if(id==='valle')return hasFlag('calzada_sur')||hasFlag('escuela');
+  if(id==='marismas')return hasFlag('flood_canal')||hasFlag('flood_dike');
+  if(id==='piedra')return hasFlag('piedra_reconquista');
+  if(id==='frontera')return hasFlag('pacto_norte')||hasFlag('academia_militar');
+  if(id==='isla')return hasFlag('mapa_costero');
+  if(id==='sur')return hasFlag('calzada_sur')||hasFlag('silos');
+  if(id==='paso')return hasFlag('war_occupied');
+  return false;
+}
+function landRevealedByFlags(id){
+  if(id==='puerto'||id==='isla')return hasFlag('mapa_costero');
+  if(id==='paso'||id==='piedra')return hasFlag('war_active')||hasFlag('war_neutral')||hasFlag('war_north')||hasFlag('war_occupied')||hasFlag('war_tribute')||hasFlag('war_peace');
+  if(id==='marismas')return hasFlag('flood_on')||hasFlag('flood_active')||hasFlag('flood_canal');
+  if(id==='sur')return hasFlag('famine_active')||hasFlag('calzada_sur')||hasFlag('silos');
+  if(id==='frontera')return hasFlag('pacto_norte')||hasFlag('academia_militar');
+  if(id==='valle')return hasFlag('escuela')||hasFlag('calzada_sur');
+  return false;
+}
+function realmHas(list,id){return ((ensureRealm()||{})[list]||[]).includes(id)}
+function realmPush(list,id){
+  const realm=ensureRealm();if(!realm||!id)return;
+  realm[list]=realm[list]||[];
+  if(!realm[list].includes(id))realm[list].push(id);
+}
+function realmPull(list,id){
+  const realm=ensureRealm();if(!realm||!id)return;
+  realm[list]=(realm[list]||[]).filter(x=>x!==id);
+}
+function regionOwner(id){
+  if(!state)return 'fog';
+  const realm=ensureRealm();
+  if(id==='norte'||id==='sahr'||id==='ceniza'){
+    if((realm.veiled||[]).includes(id))return 'fog';
+    if(id==='ceniza'&&hasFlag('war_occupied'))return 'ours';
+    if(id==='ceniza'&&(hasFlag('war_tribute')||hasFlag('war_peace')))return 'pact';
+    if(id==='norte'&&hasFlag('pacto_norte')&&(state.neighbors.norte||0)>=58)return 'pact';
+    if(id==='sahr'&&hasFlag('sahr_treaty'))return 'pact';
+    return 'foreign';
+  }
+  if(realmHas('lost',id)||(id==='piedra'&&hasFlag('piedra_perdida')&&!hasFlag('piedra_reconquista')))return 'lost';
+  if(landClaimedByFlags(id)||(realm.home||[]).includes(id)||realmHas('claimed',id))return 'ours';
+  if(id==='paso'&&(hasFlag('war_tribute')||hasFlag('war_peace')))return 'pact';
+  if(landRevealedByFlags(id)||realmHas('revealed',id))return 'known';
+  return 'fog';
+}
+function regionDef(id){return REGION_DEFS.find(r=>r.id===id)||null}
+function regionHurt(id){
+  if(id==='norte'||id==='sahr'||id==='ceniza')return (state.neighbors[id]||50)<24;
+  const def=regionDef(id);return !!(def&&def.hurt&&def.hurt(state));
+}
+function regionMark(id){
+  const def=regionDef(id);return (def&&def.mark&&def.mark(state))||'';
+}
+function regionScale(id,node){
+  const owner=regionOwner(id);
+  let s=1;
+  if(owner==='ours')s*=1.14;
+  else if(owner==='pact')s*=1.06;
+  else if(owner==='lost')s*=0.82;
+  else if(owner==='fog')s*=0.76;
+  else if(owner==='known')s*=0.92;
+  if(regionMark(id))s*=1.08;
+  if(regionHurt(id))s*=0.9;
+  if(node&&node.kind==='neighbor')s*=0.86+((state.neighbors[id]||50)/220);
+  return s;
+}
+function regionPath(node,scale){
+  const n=node.jag.length,pts=[];
+  for(let i=0;i<n;i++){
+    const a=-Math.PI/2+i*(Math.PI*2/n);
+    const rr=node.r*scale*node.jag[i];
+    pts.push([node.cx+Math.cos(a)*rr,node.cy+Math.sin(a)*rr]);
+  }
+  return 'M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')+'Z';
+}
+function realmStatusLabel(owner,hurt,mark){
+  if(owner==='fog')return 'sin cartografiar';
+  if(owner==='known')return 'en el archivo, no en el sello';
+  if(owner==='lost')return hurt?'perdida y herida':'perdida';
+  if(owner==='foreign')return hurt?'vecino hostil':'vecino';
+  if(owner==='pact')return mark?mark:'pacto';
+  if(mark)return mark;
+  return hurt?'herida':'de la corona';
+}
+function intendedLands(){
+  const ids=[];
+  if(hasFlag('war_active')||hasFlag('war_campaign')||hasFlag('war_climax')||hasFlag('war_charge'))ids.push('paso','piedra');
+  if(hasFlag('famine_active')||hasFlag('famine_south')||hasFlag('calzada_sur')||hasFlag('silos'))ids.push('sur');
+  if(hasFlag('flood_on')||hasFlag('flood_active')||hasFlag('flood_canal')||hasFlag('flood_dike'))ids.push('marismas');
+  if(hasFlag('mapa_costero')||hasFlag('puerto_franco')||hasFlag('banco')||hasFlag('schism_open'))ids.push('puerto','isla');
+  if(hasFlag('escuela')||hasFlag('calzada_sur'))ids.push('valle');
+  if(hasFlag('pacto_norte')||hasFlag('academia_militar'))ids.push('frontera');
+  if(hasFlag('piedra_reconquista'))ids.push('piedra');
+  return ids;
+}
+function revealRealmLand(id){
+  if(!id||id==='capital')return false;
+  if(regionOwner(id)==='ours'||regionOwner(id)==='lost'){realmPush('revealed',id);return false}
+  realmPush('revealed',id);
+  return true;
+}
+function claimRealmLand(opts={}){
+  const realm=ensureRealm();
+  const lands=realm.layout.filter(r=>r.kind==='land'&&regionOwner(r.id)!=='ours');
+  const prefer=opts.id&&lands.find(r=>r.id===opts.id);
+  const intended=opts.id?null:intendedLands().map(id=>lands.find(r=>r.id===id)).find(Boolean);
+  const found=prefer||intended||lands.find(r=>regionOwner(r.id)==='fog')||lands.find(r=>regionOwner(r.id)==='known')||lands.find(r=>regionOwner(r.id)==='lost');
+  if(!found){
+    if(!opts.silent)toast('No queda tierra','El sello ya cubre lo que el archivo conoce.');
+    return null;
+  }
+  realmPush('revealed',found.id);
+  realmPush('claimed',found.id);
+  realmPull('lost',found.id);
+  if(found.id==='capital')ensureRealm().seat='capital';
+  return found;
+}
+function oursLands(){
+  const realm=ensureRealm();
+  return ((realm&&realm.layout)||[]).filter(r=>r.kind==='land'&&regionOwner(r.id)==='ours');
+}
+function heirLordTitle(gender){return gender==='f'?'señora':'señor'}
+function pickHeirSeat(fallenId){
+  const realm=ensureRealm();
+  const inner=['valle','sur','puerto','marismas'];
+  const ok=id=>id&&id!==fallenId?id:null;
+  if(ok(realm.kinSeat))return realm.kinSeat;
+  if(hasFlag('escuela')&&ok('valle'))return 'valle';
+  if((hasFlag('silos')||hasFlag('calzada_sur'))&&ok('sur'))return 'sur';
+  if((hasFlag('puerto_franco')||hasFlag('banco')||hasFlag('mapa_costero'))&&ok('puerto'))return 'puerto';
+  if(hasFlag('academia_militar')&&ok('frontera'))return 'frontera';
+  if((hasFlag('flood_canal')||hasFlag('flood_dike'))&&ok('marismas'))return 'marismas';
+  const loyal=oursLands().filter(r=>r.id!==fallenId);
+  if(loyal.length)return loyal[0].id;
+  const pool=inner.filter(id=>id!==fallenId);
+  return (rng&&pool.length)?rng.pick(pool):(pool[0]||'valle');
+}
+function prepareRealmFall(fallenId){
+  const realm=ensureRealm();
+  if(realm.pendingSeat)return realm.pendingSeat;
+  realm.pendingSeat=pickHeirSeat(fallenId);
+  realm.fallen=fallenId;
+  loseRealmLand(fallenId,{silent:true,fromFall:true});
+  addFlag('realm_falling');
+  return realm.pendingSeat;
+}
+function crownOnRemnant(){
+  const realm=ensureRealm();
+  const seat=realm.pendingSeat||realm.kinSeat||'valle';
+  ((realm.layout)||[]).forEach(n=>{
+    if(n.kind!=='land'||n.id===seat)return;
+    realmPush('lost',n.id);
+    realmPull('claimed',n.id);
+  });
+  realm.home=[seat];
+  realm.claimed=[seat];
+  realm.seat=seat;
+  realmPush('revealed',seat);
+  realmPull('lost',seat);
+  realm.rebuiltAt=state.worldYear||1;
+  realm.pendingSeat=null;
+  clearFlag('realm_falling');
+  return seat;
+}
+function loseRealmLand(id,opts={}){
+  if(!id||id==='norte'||id==='sahr'||id==='ceniza')return null;
+  if(realmHas('lost',id))return id;
+  const rest=oursLands().filter(r=>r.id!==id);
+  if(!rest.length&&!opts.fromFall){
+    prepareRealmFall(id);
+    return id;
+  }
+  realmPush('lost',id);
+  realmPull('claimed',id);
+  const realm=ensureRealm();
+  realm.home=(realm.home||[]).filter(x=>x!==id);
+  if(realm.seat===id)realm.seat=rest[0]?rest[0].id:realm.pendingSeat;
+  if(!opts.silent){
+    const flee=id==='capital'&&rest[0]?`Valdoria cae. La corte huye a ${regionName(rest[0].id)}.`:`${regionName(id)} ya no está en el sello.`;
+    toast('Tierra perdida',flee);
+    if(rest.length===1)toast('Última tierra',`${regionName(rest[0].id)} es lo que queda. Si cae, cae el reinado.`);
+  }
+  return id;
+}
+function unveilNeighbor(id){
+  realmPull('veiled',id);
+}
+function syncRealmFromFlags(){
+  if(!state)return;
+  ensureRealm();
+  REGION_DEFS.forEach(r=>{
+    if(r.id==='capital')return;
+    if(landRevealedByFlags(r.id))realmPush('revealed',r.id);
+    if(landClaimedByFlags(r.id)&&!realmHas('lost',r.id)){realmPush('claimed',r.id);realmPush('revealed',r.id)}
+  });
+  if(hasFlag('piedra_perdida')&&!hasFlag('piedra_reconquista'))loseRealmLand('piedra',{silent:true});
+  if(hasFlag('piedra_reconquista')){realmPush('claimed','piedra');realmPull('lost','piedra')}
+  if(hasFlag('pacto_norte')||hasFlag('academia_militar')||(state.hidden.influenciaNorte||0)>=12)unveilNeighbor('norte');
+  if(hasFlag('sahr_treaty')||hasFlag('sahr_away')||hasFlag('sahr_return'))unveilNeighbor('sahr');
+  if(hasFlag('war_active')||hasFlag('war_occupied')||hasFlag('war_tribute')||hasFlag('war_peace')||hasFlag('war_neutral'))unveilNeighbor('ceniza');
+}
+function maybeGrowRealm(years){
+  if(!state||!rng||!(years>0))return;
+  syncRealmFromFlags();
+  const realm=ensureRealm();
+  const army=state.stats.ejercito||50;
+  const saber=state.stats.saber||50;
+  if((realm.veiled||[]).length&&(state.worldYear>=9||rng.chance(.12)))unveilNeighbor(rng.pick(realm.veiled));
+  intendedLands().forEach(id=>{if(regionOwner(id)==='fog')revealRealmLand(id)});
+  const fog=realm.layout.filter(r=>r.kind==='land'&&regionOwner(r.id)==='fog');
+  const known=realm.layout.filter(r=>r.kind==='land'&&regionOwner(r.id)==='known');
+  const held=oursLands();
+  const rebuilt=realm.rebuiltAt||1;
+  const age=Math.max(0,(state.worldYear||1)-rebuilt);
+  const cap=(realm.home||[]).length+Math.floor(age/5)+(army>=70?1:0);
+  if(fog.length&&rng.chance(.16+saber/500+(state.worldYear||0)*0.01)){
+    const want=intendedLands().find(id=>fog.some(r=>r.id===id));
+    revealRealmLand(want||rng.pick(fog).id);
+  }
+  if(known.length&&held.length<cap&&army>=38&&rng.chance(.11+army/450+(state.worldYear||0)*0.008)){
+    const want=intendedLands().find(id=>known.some(r=>r.id===id));
+    const pick=claimRealmLand({id:want||rng.pick(known).id,silent:true});
+    if(pick)toast('El sello se ensancha',`${regionName(pick.id)} queda bajo la corona.`);
+  }
+  if(held.length===1&&army<16&&rng.chance(.08)){
+    prepareRealmFall(held[0].id);
+    return;
+  }
+  if(army<22&&rng.chance(.12)&&held.length>1){
+    const fringe=held.filter(r=>['frontera','paso','piedra','isla','capital'].includes(r.id)||!(realm.home||[]).includes(r.id));
+    const pool=fringe.length?fringe:held;
+    loseRealmLand(rng.pick(pool).id);
+  }
+}
+
 function conditionOK(card){
   if(!card)return false;
   if(card.tutorial)return false;
@@ -405,8 +682,58 @@ function getNextCard(){
 }
 
 function resolveMagnitude(v){if(Array.isArray(v))return rng.int(v[0],v[1]);return v||0}
-function effectPreview(choice,precise){
-  const parts=[];for(const k of STAT_KEYS){const v=choice.effects?.[k];if(v==null)continue;let mag=Array.isArray(v)?Math.max(Math.abs(v[0]),Math.abs(v[1])):Math.abs(v);let dots=mag>=10?'●●●':mag>=6?'●●':'●';if(precise||(state.meta.perks||[]).includes('consejo'))dots=(v>0?'+':'−')+mag;parts.push(`${STAT_ICONS[k]}${state.settings.hints||precise?dots:''}`)}return parts.join('  ')
+function effectSign(v){
+  if(Array.isArray(v)){
+    const s=(Number(v[0])||0)+(Number(v[1])||0);
+    if(s!==0)return s>0?1:-1;
+    return (Number(v[1])||0)>=0?1:-1;
+  }
+  return (v||0)>=0?1:-1;
+}
+function previewLevel(precise){
+  if(precise||(state.meta.perks||[]).includes('consejo'))return 'numbers';
+  if(!state.settings.hints)return 'name';
+  if(state.mode==='relaxed')return 'numbers';
+  if(state.mode==='harsh'||state.mode==='chaos')return 'name';
+  return 'dots';
+}
+function formatPreviewMag(v,level){
+  const up=effectSign(v)>0;
+  const sign=up?'+':'−';
+  if(Array.isArray(v)){
+    const a=Math.abs(v[0]),b=Math.abs(v[1]);
+    const lo=Math.min(a,b),hi=Math.max(a,b);
+    if(level==='numbers')return lo===hi?sign+hi:`${sign}${lo}–${hi}`;
+    return hi>=10?'●●●':hi>=6?'●●':'●';
+  }
+  const mag=Math.abs(v);
+  if(level==='numbers')return sign+mag;
+  return mag>=10?'●●●':mag>=6?'●●':'●';
+}
+function effectPreviewHTML(choice,precise){
+  const level=previewLevel(!!precise);
+  const parts=[];
+  for(const k of STAT_KEYS){
+    const v=choice.effects?.[k];if(v==null)continue;
+    const dir=effectSign(v)>0?'up':'down';
+    const mag=level==='name'?'':`<em>${formatPreviewMag(v,level)}</em>`;
+    parts.push(`<span class="fx-chip ${dir}"><span class="fx-ico">${STAT_ICONS[k]}</span>${STAT_LABELS[k]}${mag}</span>`);
+  }
+  return parts.join('');
+}
+function effectPreviewText(choice,precise){
+  const level=previewLevel(!!precise);
+  const parts=[];
+  for(const k of STAT_KEYS){
+    const v=choice.effects?.[k];if(v==null)continue;
+    const mag=level==='name'?'':` ${formatPreviewMag(v,level)}`;
+    parts.push(`${STAT_LABELS[k]}${mag}`);
+  }
+  return parts.join(', ');
+}
+function fillFx(nodes,choice,precise){
+  const html=effectPreviewHTML(choice,precise);
+  nodes.forEach(n=>{if(n)n.innerHTML=html});
 }
 function wouldKill(choice){
   const modeMult=modeMultiplier();
@@ -490,10 +817,20 @@ function runSpecial(id){
   if(id==='kinSettle'){
     addFlag('kin_settled');
     const kin=kinOnStage();
+    const land=claimRealmLand();
+    if(land)ensureRealm().kinSeat=land.id;
     addEdict(kin?.name?`Feudo de ${kin.name}`:'Feudo de la otra cuna');
-    toast('La otra cuna',`${kin?.name||'El pariente'} recibe tierra. El ceremonial finge que siempre estuvo previsto.`);
+    toast('La otra cuna',`${kin?.name||'El pariente'} recibe ${land?regionName(land.id):'tierra'}. El ceremonial finge que siempre estuvo previsto.`);
   }
   if(id==='abdicate'){ensureHeir(true);addFlag('abdicate_done');addFlag('abdicating')}
+  if(id==='surveyLand'){
+    const pick=claimRealmLand();
+    if(pick)toast('Límites nuevos',`${regionName(pick.id)} entra al archivo y al sello.`);
+  }
+  if(id==='marchClaim'){
+    const pick=claimRealmLand();
+    if(pick)toast('Estandarte',`${regionName(pick.id)} queda bajo la corona.`);
+  }
 }
 function kinOnStage(){
   return (state.persistent.shadowKin||[]).find(k=>k.returned)||eldestKin()||(state.persistent.shadowKin||[])[0]||null;
@@ -682,6 +1019,7 @@ function choose(side,opts={}){
       if(state.rulerAge>=65)markReign('Corona larga');
     }
     maybeSeedHeir();maybeCloseRegency();maybeQueueAgeDeath();maybeQueueOdonFarewell();maybeQueueKinReturn();
+    syncRealmFromFlags();maybeGrowRealm(years);
     state.consulted=false;
     scheduleWorldEvents();updateHiddenMilestones();
     state.history.unshift({year:state.reignYear,world:state.worldYear,reign:state.reign,ruler:state.ruler,speaker:ADVISORS[card.advisor]?.name||'Destino',text:cardTextOf(card),choice:choice.label,effects:realized,annal:''});
@@ -702,7 +1040,7 @@ function choose(side,opts={}){
       try{
         if(changed.length)flashMapRegions(changed);
         renderStats();renderHeader();
-        if(checkAbdicate()||checkDeath()||checkAgeDeath()||checkBetrayalDeath()||checkSpecialEnding())return;
+        if(checkRealmFall()||checkAbdicate()||checkDeath()||checkAgeDeath()||checkBetrayalDeath()||checkSpecialEnding())return;
         dealCard();
       }catch(err){console.error(err);try{dealCard()}catch{}}
       finally{releaseCard()}
@@ -741,6 +1079,11 @@ function checkAgeDeath(){
   if(hasFlag('age_dying')){endReign('age',false);return true}
   return false;
 }
+function checkRealmFall(){
+  if(!(hasFlag('realm_falling')||(state.realm&&state.realm.pendingSeat)))return false;
+  if(oursLands().length>0)return false;
+  endReign('realm',false);return true;
+}
 function checkAbdicate(){
   if(hasFlag('abdicating')){endReign('abdicate',false);return true}
   return false;
@@ -749,6 +1092,7 @@ function causeLabel(stat,high){
   if(stat==='age')return 'El cuerpo cedió';
   if(stat==='betrayal')return 'La daga';
   if(stat==='abdicate')return 'Abdicación';
+  if(stat==='realm')return 'El reino se deshizo';
   return `${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
 }
 function recordLineage(stat,high){
@@ -776,19 +1120,22 @@ function rumorOfDead(){
 }
 function endReign(stat,high){
   state.meta.totalReigns++;state.meta.bestReign=Math.max(state.meta.bestReign,state.reignYear);
-  const key=stat==='betrayal'?'betrayal':stat==='age'?'age':stat==='abdicate'?'abdicate':stat+(high?'High':'Low');
+  const key=stat==='betrayal'?'betrayal':stat==='age'?'age':stat==='abdicate'?'abdicate':stat==='realm'?'realm':stat+(high?'High':'Low');
   state.meta.lifetimeDeaths[key]=(state.meta.lifetimeDeaths[key]||0)+1;
   const earned=Math.max(1,Math.floor(state.reignYear/8)+Math.floor(state.reignDecisions/18));
   state.meta.legacy+=earned;localStorage.setItem(META_KEY,JSON.stringify(state.meta));
   const kind=plotKind();
-  const txt=stat==='abdicate'?rng.pick(deathReasons.abdicate):stat==='betrayal'?rng.pick(deathReasons['betrayal_'+(kind||'gold')]||deathReasons.betrayal):stat==='age'?rng.pick(deathReasons.age):rng.pick(deathReasons[key]);
-  $('#deathTitle').textContent=stat==='abdicate'?'La corona se deja':stat==='betrayal'?'La daga encontró el oficio':stat==='age'?'El cuerpo cedió':`${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
+  const realm=ensureRealm();
+  const seatName=regionName(realm.pendingSeat||realm.kinSeat||'valle');
+  const fallenName=regionName(realm.fallen||'capital');
+  const txt=stat==='realm'?rng.pick(deathReasons.realm):stat==='abdicate'?rng.pick(deathReasons.abdicate):stat==='betrayal'?rng.pick(deathReasons['betrayal_'+(kind||'gold')]||deathReasons.betrayal):stat==='age'?rng.pick(deathReasons.age):rng.pick(deathReasons[key]);
+  $('#deathTitle').textContent=stat==='realm'?'El reino se deshizo':stat==='abdicate'?'La corona se deja':stat==='betrayal'?'La daga encontró el oficio':stat==='age'?'El cuerpo cedió':`${STAT_LABELS[stat]} ${high?'desbordado':'colapsado'}`;
   $('#deathText').textContent=txt;
-  $('#deathMemory').textContent=stat==='abdicate'?'El heredero ya está sentado. El ceremonial finge que siempre fue así.':stat==='betrayal'?(state.persistent.plotFace?`${state.persistent.plotFace} sigue comiendo en palacio. El heredero heredará esa silla.`:rumorOfDead()):rumorOfDead();
+  $('#deathMemory').textContent=stat==='realm'?`El heredero no estaba en ${fallenName}.`:stat==='abdicate'?'El heredero ya está sentado. El ceremonial finge que siempre fue así.':stat==='betrayal'?(state.persistent.plotFace?`${state.persistent.plotFace} sigue comiendo en palacio. El heredero heredará esa silla.`:rumorOfDead()):rumorOfDead();
   $('#deathYears').textContent=state.reignYear;
   $('#deathAge').textContent=Math.round(state.rulerAge);
   $('#deathLegacy').textContent='+'+earned;
-  $('#deathIcon').textContent=stat==='abdicate'?'♜':stat==='betrayal'?'🗡':stat==='age'?'⌛':STAT_ICONS[stat];
+  $('#deathIcon').textContent=stat==='realm'?'♔':stat==='abdicate'?'♜':stat==='betrayal'?'🗡':stat==='age'?'⌛':STAT_ICONS[stat];
   const works=state.edicts.slice(-6).map(e=>`<div class="unlock">Sobrevió: ${escapeHtml(e.name)}</div>`).join('')||'<div class="unlock">Ninguna obra nombrada sobrevive con claridad.</div>';
   $('#deathEdicts').innerHTML=works;
   resolveSuccessor();
@@ -796,11 +1143,12 @@ function endReign(stat,high){
   checkAchievements();
   const years=Math.max(1,Math.round(state.heir.age));
   const minor=years<16;
-  $('#deathHeir').innerHTML=`<b>${escapeHtml(state.heir.name)}</b><span>${heirKin(state.heir)}, ${years} años.${minor?' El Consejo abrirá una regencia.':''} ${state.persistent.heirTrait?('Rasgo: '+state.persistent.heirTrait+'.'):'Todavía sin tutor claro.'}</span>`;
+  const named=stat==='realm'?` ${state.heir.gender==='f'?'La':'Lo'} nombran ${heirLordTitle(state.heir.gender)} de ${seatName}.`:'';
+  $('#deathHeir').innerHTML=`<b>${escapeHtml(state.heir.name)}</b><span>${heirKin(state.heir)}, ${years} años.${minor?' El Consejo abrirá una regencia.':''}${named} ${state.persistent.heirTrait?('Rasgo: '+state.persistent.heirTrait+'.'):'Todavía sin tutor claro.'}</span>`;
   const nextBtn=$('#nextReignBtn');
-  if(nextBtn)nextBtn.textContent=minor?`Abrir la regencia de ${state.heir.name}`:`Coronar a ${state.heir.name}`;
+  if(nextBtn)nextBtn.textContent=stat==='realm'?(minor?`Regencia en ${seatName}`:`Coronar en ${seatName}`):(minor?`Abrir la regencia de ${state.heir.name}`:`Coronar a ${state.heir.name}`);
   $('#deathUnlocks').innerHTML=earned>=4?'<div class="unlock">✧ Tu largo reinado fortalece el legado de la dinastía.</div>':'';
-  if(el.deathArt){el.deathArt.src=deathArtFor(stat);el.deathArt.alt=stat==='abdicate'?'La abdicación':stat==='betrayal'?'La daga':'El fin del reinado'}
+  if(el.deathArt){el.deathArt.src=deathArtFor(stat);el.deathArt.alt=stat==='realm'?'El reino se deshizo':stat==='abdicate'?'La abdicación':stat==='betrayal'?'La daga':'El fin del reinado'}
   if(typeof CourtFx!=='undefined')CourtFx.death();
   $('#deathDialog').showModal();saveAll();
   sfx('death');
@@ -837,6 +1185,7 @@ function inheritKingdom(){
 function nextReign(){
   if(typeof CourtFx!=='undefined')CourtFx.lift();
   $('#deathDialog').close();
+  const remnant=state.realm&&state.realm.pendingSeat;
   const heir=ensureHeir(true);
   state.reign++;state.reignYear=1;state.reignDecisions=0;state.guardUsed=false;state.undoUsed=false;state.snapshot=null;state.consulted=false;
   inheritKingdom();applyStartPerks();
@@ -844,15 +1193,16 @@ function nextReign(){
   state.flags=state.flags.filter(f=>!/^plot_/.test(f));
   if(killer?.kind)addFlag('shadow_'+killer.kind);
   state.reignMarks=[];
-  ['age_dying','age_death_queued','abdicating','abdicate_rumor'].forEach(clearFlag);
+  ['age_dying','age_death_queued','abdicating','abdicate_rumor','realm_falling'].forEach(clearFlag);
   state.delayed=state.delayed.filter(d=>d.type!=='age_death');
   setRuler(true);
   stashShadowKin(state.ruler.split(' ')[0]);
+  const seat=remnant?crownOnRemnant():null;
   state.heir=null;state.currentCard=null;state.busy=false;
   state.persistent.children=[];
   if((state.meta.perks||[]).includes('primogenitura'))ensureHeir(true);
   checkAchievements();saveAll();renderAll();dealCard();
-  const sucesor=state.regent?`${state.ruler} hereda; ${state.regent.name} firma hasta los dieciséis.`:killer?`${state.ruler} hereda un reino… y al que sirvió el vino.`:`${state.ruler} hereda un reino que recuerda.`;
+  const sucesor=seat?`${state.ruler} es ${heirLordTitle(state.rulerGender)} de ${regionName(seat)}. El resto es un título y un mapa viejo.`:state.regent?`${state.ruler} hereda; ${state.regent.name} firma hasta los dieciséis.`:killer?`${state.ruler} hereda un reino… y al que sirvió el vino.`:`${state.ruler} hereda un reino que recuerda.`;
   toast('Nueva corona',sucesor);
 }
 
@@ -910,7 +1260,8 @@ function renderCard(){
   const left=substNames(flexLabel(c.left.label,'left')),right=substNames(flexLabel(c.right.label,'right'));
   el.leftText.textContent=left;el.rightText.textContent=right;el.leftBtnText.textContent=left;el.rightBtnText.textContent=right;
   el.swipeLeftText.textContent=left;el.swipeRightText.textContent=right;
-  el.leftEffects.textContent=effectPreview(c.left);el.rightEffects.textContent=effectPreview(c.right);
+  fillFx([el.leftEffects,el.leftBtnFx,el.swipeLeftFx],c.left);
+  fillFx([el.rightEffects,el.rightBtnFx,el.swipeRightFx],c.right);
   $('#chainHint').innerHTML=c.chain?`<span class="chain">◇ ${c.chain}</span>`:(c.years===0?'<span>Una noche</span>':'');
   el.cardEcho.textContent='';el.consultHint.textContent='';
   const canConsult=canUseConsult(c);
@@ -937,10 +1288,10 @@ function consultCouncil(){
   const c=state.currentCard;if(!canUseConsult(c))return;
   state.consulted=true;state.lastConsult=state.worldYear;
   const a=ADVISORS[c.advisor];
-  const line=c.consult||`${a?.name||'El Consejo'} murmura: izquierda ${effectPreview(c.left,true) || 'casi nada'}; derecha ${effectPreview(c.right,true)||'casi nada'}.`;
+  const line=c.consult||`${a?.name||'El Consejo'} murmura: izquierda ${effectPreviewText(c.left,true) || 'casi nada'}; derecha ${effectPreviewText(c.right,true)||'casi nada'}.`;
   el.consultHint.textContent=substNames(line);
-  el.leftEffects.textContent=effectPreview(c.left,true);
-  el.rightEffects.textContent=effectPreview(c.right,true);
+  fillFx([el.leftEffects,el.leftBtnFx,el.swipeLeftFx],c.left,true);
+  fillFx([el.rightEffects,el.rightBtnFx,el.swipeRightFx],c.right,true);
   el.consultBtn.disabled=true;
   sfx('consult');saveAll();
 }
@@ -1137,9 +1488,10 @@ function startNew(opts={}){
   const house={color:$('#colorInput').value||'#c6a45b',motto:$('#mottoInput').value.trim(),founder:$('#founderInput').value.trim()};
   state=initialState(seed,dynasty,mode,meta,house);
   if(typeof CourtFx!=='undefined')CourtFx.lift();
-  rng=new RNG(seed);state.rulerGender=pickGender();applyStartPerks();setRuler();applyHouse();saveAll();
+  rng=new RNG(seed);state.realm=generateRealm(seed);state.rulerGender=pickGender();applyStartPerks();setRuler();applyHouse();saveAll();
   $('#startDialog').close();renderAll();dealCard();ensureAudio();tuneDrone();
-  toast(opts.daily?'Desafío del día':'La crónica comienza',`${state.ruler} recibe la Corona de Ceniza.`);
+  const extra=(state.realm.home||[]).filter(id=>id!=='capital').map(regionName).join(' y ');
+  toast(opts.daily?'Desafío del día':'La crónica comienza',`${state.ruler} recibe la Corona de Ceniza. Sostiene Valdoria${extra?' y '+extra:''}; el resto aún no está en el sello.`);
 }
 function exportSave(){saveAll();const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`corona-de-ceniza-${state.dynasty.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.json`;a.click();URL.revokeObjectURL(a.href)}
 function importSave(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s.seed||!s.stats)throw new Error('Formato inválido');state=patchState(s);rng=new RNG(state.seed,state.rngCounter||0);saveAll();$('#menuDialog').close();renderAll();renderCard();toast('Partida importada',`Dinastía ${state.dynasty}`)}catch(e){toast('No se pudo importar',e.message)}};r.readAsText(file)}
@@ -1195,24 +1547,40 @@ function sparkSVG(){
 function mapSVG(opts={}){
   const gaze=new Set(opts.gaze||[]);
   const flash=new Set(opts.flash||[]);
-  const paths=REGIONS.map(r=>{
-    const on=r.on?r.on(state):false;const hurt=r.hurt?r.hurt(state):false;
-    const built=r.mark?r.mark(state):'';
-    const cls=['region',on?'on':'',hurt?'hurt':'',built?'built':'',gaze.has(r.id)?'gaze':'',flash.has(r.id)?'flash':''].filter(Boolean).join(' ');
-    return `<path class="${cls}" data-id="${r.id}" d="${r.d}"><title>${r.name}${built?' · '+built:''}</title></path>`;
+  const realm=ensureRealm();
+  const nodes=(realm&&realm.layout)||[];
+  const paths=nodes.map(node=>{
+    const owner=regionOwner(node.id);
+    const hurt=regionHurt(node.id);
+    const built=regionMark(node.id);
+    const scale=regionScale(node.id,node);
+    const cls=['region',owner,hurt?'hurt':'',built?'built':'',gaze.has(node.id)?'gaze':'',flash.has(node.id)?'flash':''].filter(Boolean).join(' ');
+    const label=owner==='fog'?'Tierra sin nombre':`${regionName(node.id)}${built?' · '+built:''}`;
+    return `<path class="${cls}" data-id="${node.id}" d="${regionPath(node,scale)}"><title>${label}</title></path>`;
   }).join('');
-  const caption=opts.mini?'':`<text x="130" y="222" text-anchor="middle" fill="#8f899b" font-size="9" font-family="Georgia">Valdoria y sus orillas</text>`;
-  return `<svg class="map-svg" viewBox="0 0 260 230" role="img" aria-label="Mapa de Valdoria">${paths}${caption}</svg>`;
+  const labels=opts.mini?'':nodes.map(node=>{
+    const owner=regionOwner(node.id);
+    if(owner==='fog')return '';
+    const n=regionName(node.id);
+    const short=n.length>14?n.slice(0,12)+'…':n;
+    return `<text x="${node.cx.toFixed(1)}" y="${(node.cy+3).toFixed(1)}" text-anchor="middle" fill="#cfc6b4" font-size="6.5" font-family="Georgia" pointer-events="none">${short}</text>`;
+  }).join('');
+  const ours=nodes.filter(n=>n.kind==='land'&&regionOwner(n.id)==='ours').length;
+  const lands=nodes.filter(n=>n.kind==='land').length;
+  const caption=opts.mini?'':`<text x="130" y="222" text-anchor="middle" fill="#8f899b" font-size="9" font-family="Georgia">La corona sostiene ${ours} de ${lands} tierras</text>`;
+  return `<svg class="map-svg" viewBox="0 0 260 230" role="img" aria-label="Mapa de Valdoria">${paths}${labels}${caption}</svg>`;
 }
 function mapSignature(){
   if(!state)return '';
-  return REGIONS.map(r=>[r.id,r.on&&r.on(state)?1:0,r.hurt&&r.hurt(state)?1:0,(r.mark&&r.mark(state))||''].join('\t')).join('\n');
+  const realm=ensureRealm();
+  return ((realm&&realm.layout)||[]).map(n=>[n.id,regionOwner(n.id),regionHurt(n.id)?1:0,regionMark(n.id),regionScale(n.id,n).toFixed(2)].join('\t')).join('\n');
 }
 function mapChangedIds(prev,next){
   if(!prev||!next||prev===next)return [];
-  const parse=s=>Object.fromEntries(s.split('\n').map(line=>{const i=line.indexOf('\t');return [line.slice(0,i),line.slice(i+1)]}));
+  const parse=s=>Object.fromEntries(s.split('\n').filter(Boolean).map(line=>{const i=line.indexOf('\t');return [line.slice(0,i),line.slice(i+1)]}));
   const a=parse(prev),b=parse(next);
-  return REGIONS.map(r=>r.id).filter(id=>a[id]!==b[id]);
+  const ids=new Set([...Object.keys(a),...Object.keys(b)]);
+  return [...ids].filter(id=>a[id]!==b[id]);
 }
 function cardGazeRegions(card){
   if(!card)return [];
@@ -1233,9 +1601,11 @@ function cardGazeRegions(card){
   if(/piedra/.test(blob))add('piedra');
   if(/calzada|silos|grain|famine|royal-road/.test(blob))add('sur');
   if(/escuela|public-school|bridge-toll/.test(blob))add('valle');
-  if(/war_|paso de ceniza|tres.banderas/.test(blob))add('paso');
+  if(/war_|paso de ceniza|tres.banderas/.test(blob)){add('paso');add('ceniza')}
+  if(/norte|garrik|pacto_norte|ducado/.test(blob))add('norte');
+  if(/sahr/.test(blob))add('sahr');
   if(/hospital|imprenta|printing|public-hospital|sewer|festival/.test(blob))add('capital');
-  return hit.slice(0,2);
+  return hit.slice(0,3);
 }
 function renderRealmMap(){
   const wrap=el.realmMap,box=el.realmMapSvg;
@@ -1287,14 +1657,18 @@ function renderCodex(tab='lineage'){
     box.innerHTML=list+(flags.length?`<p class="lead">El reino recuerda: ${flags.join(', ')}.</p>`:'');
   }
   if(tab==='map'){
-    const legend=REGIONS.map(r=>{
-      const hurt=r.hurt&&r.hurt(state);
-      const on=r.on&&r.on(state);
-      const built=r.mark&&r.mark(state);
-      const status=r.id==='capital'?(hurt?'herida':built?built:'sede de la corona'):hurt?'herido':built?built:on?'marcado en el estandarte':'en calma';
-      return `<div><b>${r.name}</b> — ${status}</div>`;
+    const realm=ensureRealm();
+    const nodes=(realm&&realm.layout)||[];
+    const key=`<div class="map-key"><span><i class="ours"></i> corona</span><span><i class="pact"></i> pacto</span><span><i class="known"></i> archivo</span><span><i class="foreign"></i> vecino</span><span><i class="lost"></i> perdida</span><span><i class="fog"></i> sin cartografiar</span></div>`;
+    const legend=nodes.map(n=>{
+      const owner=regionOwner(n.id);
+      const hurt=regionHurt(n.id);
+      const built=regionMark(n.id);
+      const name=owner==='fog'?'Tierra sin nombre':regionName(n.id);
+      return `<div><b>${name}</b> — ${realmStatusLabel(owner,hurt,built)}</div>`;
     }).join('');
-    box.innerHTML=`<div class="map-wrap">${mapSVG()}<div class="map-legend">${legend}<p>Vecinos: ${NEIGHBOR_KEYS.map(k=>`${NEIGHBOR_LABELS[k]} ${Math.round(state.neighbors[k])}`).join(' · ')}</p><p>Facciones: ${FACTION_KEYS.map(k=>`${FACTION_LABELS[k]} ${Math.round(state.factions[k])}`).join(' · ')}</p></div></div>`;
+    const ours=nodes.filter(n=>n.kind==='land'&&regionOwner(n.id)==='ours').length;
+    box.innerHTML=`<div class="map-wrap">${mapSVG()}<div class="map-legend">${key}<p>La corona sostiene ${ours} ${ours===1?'tierra':'tierras'}. El archivo, el sello y los vecinos cambian con la crónica.</p>${legend}<p>Vecinos: ${NEIGHBOR_KEYS.map(k=>regionOwner(k)==='fog'?'un vecino sin nombre':`${NEIGHBOR_LABELS[k]} ${Math.round(state.neighbors[k])}`).join(' · ')}</p><p>Facciones: ${FACTION_KEYS.map(k=>`${FACTION_LABELS[k]} ${Math.round(state.factions[k])}`).join(' · ')}</p></div></div>`;
   }
   if(tab==='chronicles'){
     const books=state.meta.chronicles||[];

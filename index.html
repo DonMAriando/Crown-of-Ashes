@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;600;700&display=swap" />
-  <link rel="stylesheet" href="style.css?v=2.27" />
+  <link rel="stylesheet" href="style.css?v=2.30" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.png?v=2.22" type="image/png" />
   <link rel="apple-touch-icon" href="icon.png?v=2.22" />
@@ -87,8 +87,8 @@
         <div class="ghost-card back-2"></div>
         <div class="ghost-card back-1"></div>
         <article class="card" id="card" tabindex="0" aria-live="polite">
-          <div class="swipe-label left" id="swipeLeft"><b id="swipeLeftText">Rechazar</b></div>
-          <div class="swipe-label right" id="swipeRight"><b id="swipeRightText">Aceptar</b></div>
+          <div class="swipe-label left" id="swipeLeft"><b id="swipeLeftText">Rechazar</b><small id="swipeLeftFx" class="btn-fx"></small></div>
+          <div class="swipe-label right" id="swipeRight"><b id="swipeRightText">Aceptar</b><small id="swipeRightFx" class="btn-fx"></small></div>
           <div class="card-topline"><span id="cardTag">CORTE</span><span id="rarityTag">COMÚN</span></div>
           <div class="portrait" id="portrait"><img id="portraitImg" alt="" /><div class="sil" id="portraitGlyph"></div><span id="advisorMood"></span></div>
           <div class="speaker"><strong id="speakerName">Consejera</strong><small id="speakerTitle">del reino</small></div>
@@ -99,9 +99,9 @@
       </div>
 
       <div class="desktop-actions">
-        <button id="leftBtn" class="choice-btn no"><span>←</span><b id="leftBtnText">Rechazar</b></button>
+        <button id="leftBtn" class="choice-btn no"><span>←</span><span class="choice-btn-copy"><b id="leftBtnText">Rechazar</b><small id="leftBtnFx" class="btn-fx"></small></span></button>
         <button id="consultBtn" class="consult-btn" title="Consultar al Consejo (no disponible en crisis)">Consejo</button>
-        <button id="rightBtn" class="choice-btn yes"><b id="rightBtnText">Aceptar</b><span>→</span></button>
+        <button id="rightBtn" class="choice-btn yes"><span class="choice-btn-copy"><b id="rightBtnText">Aceptar</b><small id="rightBtnFx" class="btn-fx"></small></span><span>→</span></button>
       </div>
       <p class="consult-hint" id="consultHint"></p>
     </main>
@@ -167,7 +167,7 @@
     <div class="settings-box">
       <label><span>Sonido</span><input id="soundToggle" type="checkbox" checked /></label>
       <label><span>Música de corte</span><input id="musicToggle" type="checkbox" checked /></label>
-      <label><span>Mostrar magnitud aproximada</span><input id="hintToggle" type="checkbox" checked /></label>
+      <label><span>Mostrar magnitud de los pilares</span><input id="hintToggle" type="checkbox" checked /></label>
       <label><span>Reducir movimiento</span><input id="motionToggle" type="checkbox" /></label>
       <div class="seed-readout"><span>Semilla</span><code id="seedReadout">—</code></div>
     </div>
@@ -177,6 +177,7 @@
     <div class="modal-head"><div><p class="eyebrow">OFICIO DE REINAR</p><h2>Cómo se sostiene la corona</h2></div><button class="close-btn" data-close="helpDialog">×</button></div>
     <div class="help-body">
       <p>Arrastrá la carta, usá los botones o las flechas ← →. Cada decisión mueve cuatro pilares. Si uno toca <b>0</b> o <b>100</b>, el reinado termina.</p>
+      <p>A los costados de la carta —o bajo los botones, en el teléfono— ves qué pilares se mueven. Verde sube, rojo baja. En Crónica, los puntos dicen más o menos cuánto; en Consejo Real, el número. En Corona de Hierro y Oráculo Roto, solo el nombre. El menú puede apagar la magnitud.</p>
       <ul>
         <li><b>Pueblo</b> — lealtad de plazas y aldeas. El amor extremo también destituye.</li>
         <li><b>Tesoro</b> — moneda, crédito y graneros. Demasiado oro crea un poder paralelo.</li>
@@ -185,6 +186,7 @@
       </ul>
       <p>Los consejeros tienen humor. Si los maltratás, dejan de ser decorado. Las obras que construyas sobreviven a tu muerte. El tiempo no es siempre un año: algunas cartas duran una noche.</p>
       <p>La edad sube con los años. Si el cuerpo cede, Odón —o Iva, si él cedió el oficio— lo dice en una carta. El heredero, si tiene nombre, deja de ser «el niño». Si es menor de dieciséis, hay regencia. La otra cuna puede volver. El Códice guarda linaje, detonantes y crónicas selladas. Los Anales son el diario de <i>esta</i> corona.</p>
+      <p>El mapa de la mesa no es el mismo en cada crónica: la semilla dibuja las orillas. Al empezar, la corona sostiene Valdoria y una o dos tierras; el resto está sin cartografiar. Los arcos (guerra, hambruna, calzada, mapas, pactos) revelan, anexan o pierden territorios. Con los años el sello se ensancha, si el ejército lo permite. Si se pierde la última tierra, el reinado termina: al heredero lo coronan señor de la tierra donde estaba el cuerpo.</p>
       <p>La corrupción, la autoridad y los rumores no se ven en las barras. Si se pudren, puede entrar una carta de traición: te avisan. Si ignorás los avisos, la daga no necesita que un pilar toque 0.</p>
       <p>Atajos: <kbd>←</kbd> <kbd>→</kbd> decidir · <kbd>M</kbd> música de corte · <kbd>?</kbd> esta ayuda · <kbd>Z</kbd> deshacer (si el modo lo permite).</p>
     </div>
@@ -269,11 +271,11 @@
     </div>
   </dialog>
 
-  <script src="content.js?v=2.20"></script>
-  <script src="cards-core.js?v=2.20"></script>
+  <script src="content.js?v=2.30"></script>
+  <script src="cards-core.js?v=2.29"></script>
   <script src="cards-arcs.js?v=2.20"></script>
   <script src="audio.js?v=2.17"></script>
   <script src="fx.js?v=2.18"></script>
-  <script src="game.js?v=2.27"></script>
+  <script src="game.js?v=2.30"></script>
 </body>
 </html>

@@ -17,7 +17,7 @@ function C(id,advisor,text,left,right,opt={}){
 }
 function O(label,effects={},extra={}){return {label,effects,...extra}}
 
-const VERSION='2.4.0';
+const VERSION='2.5.1';
 const STAT_KEYS=['pueblo','tesoro','ejercito','saber'];
 const STAT_LABELS={pueblo:'Pueblo',tesoro:'Tesoro',ejercito:'Ejército',saber:'Saber'};
 const STAT_ICONS={pueblo:'♟',tesoro:'◆',ejercito:'⚔',saber:'✦'};
@@ -50,17 +50,18 @@ const ADVISORS={
   iva:{name:'Iva Grís',title:'Médica de la Corte',glyph:'⚕',mood:'✧',sil:'iva'}
 };
 
-const REGIONS=[
-  {id:'capital',name:'Valdoria',d:'M118 92 L148 70 L176 88 L168 128 L122 130 Z',on:s=>true,hurt:s=>s.hidden.salud<30,mark:s=>s.flags.includes('hospital')?'Hospital':s.flags.includes('imprenta')?'Imprenta':''},
-  {id:'puerto',name:'Puerto Azul',d:'M40 150 L88 138 L96 172 L52 186 Z',on:s=>s.flags.includes('puerto_franco')||s.flags.includes('mapa_costero')||s.flags.includes('banco'),hurt:s=>s.flags.includes('schism_open'),mark:s=>s.flags.includes('banco')?'Banco':s.flags.includes('puerto_franco')?'Puerto franco':''},
-  {id:'valle',name:'Valle Hondo',d:'M96 96 L118 92 L122 130 L90 138 Z',on:s=>s.flags.includes('calzada_sur')||s.flags.includes('escuela'),hurt:s=>false,mark:s=>s.flags.includes('escuela')?'Escuela':''},
-  {id:'marismas',name:'Las Marismas',d:'M88 138 L122 130 L140 168 L96 172 Z',on:s=>s.flags.includes('flood_canal')||s.flags.includes('flood_dike'),hurt:s=>s.flags.includes('flood_on')||s.flags.includes('flood_active'),mark:s=>s.flags.includes('flood_canal')?'Canal':''},
-  {id:'piedra',name:'Piedra Alta',d:'M148 70 L188 48 L196 92 L176 88 Z',on:s=>s.flags.includes('piedra_reconquista'),hurt:s=>s.flags.includes('piedra_perdida')},
-  {id:'frontera',name:'Frontera oriental',d:'M176 88 L196 92 L210 130 L168 128 Z',on:s=>s.flags.includes('pacto_norte')||s.flags.includes('academia_militar'),hurt:s=>false,mark:s=>s.flags.includes('academia_militar')?'Academia':''},
-  {id:'isla',name:'Isla Bruma',d:'M28 168 L52 186 L44 208 L22 196 Z',on:s=>s.flags.includes('mapa_costero')},
-  {id:'sur',name:'Viñedos del Sur',d:'M122 130 L168 128 L160 176 L140 168 Z',on:s=>s.flags.includes('calzada_sur')||s.flags.includes('silos'),hurt:s=>s.flags.includes('famine_active'),mark:s=>s.flags.includes('silos')?'Silos':s.flags.includes('calzada_sur')?'Calzada':''},
-  {id:'paso',name:'Paso de Ceniza',d:'M188 48 L226 40 L230 78 L196 92 Z',on:s=>s.flags.includes('war_peace')||s.flags.includes('war_tribute'),hurt:s=>s.flags.includes('war_active')}
+const REGION_DEFS=[
+  {id:'capital',name:'Valdoria',hurt:s=>s.hidden.salud<30,mark:s=>s.flags.includes('hospital')?'Hospital':s.flags.includes('imprenta')?'Imprenta':''},
+  {id:'puerto',name:'Puerto Azul',hurt:s=>s.flags.includes('schism_open'),mark:s=>s.flags.includes('banco')?'Banco':s.flags.includes('puerto_franco')?'Puerto franco':''},
+  {id:'valle',name:'Valle Hondo',hurt:s=>false,mark:s=>s.flags.includes('escuela')?'Escuela':''},
+  {id:'marismas',name:'Las Marismas',hurt:s=>s.flags.includes('flood_on')||s.flags.includes('flood_active'),mark:s=>s.flags.includes('flood_canal')?'Canal':''},
+  {id:'piedra',name:'Piedra Alta',hurt:s=>s.flags.includes('piedra_perdida')&&!s.flags.includes('piedra_reconquista')},
+  {id:'frontera',name:'Frontera oriental',hurt:s=>false,mark:s=>s.flags.includes('academia_militar')?'Academia':''},
+  {id:'isla',name:'Isla Bruma',hurt:s=>false},
+  {id:'sur',name:'Viñedos del Sur',hurt:s=>s.flags.includes('famine_active'),mark:s=>s.flags.includes('silos')?'Silos':s.flags.includes('calzada_sur')?'Calzada':''},
+  {id:'paso',name:'El Paso',hurt:s=>s.flags.includes('war_active')}
 ];
+const REGIONS=REGION_DEFS;
 
 const deathReasons={
   puebloLow:['La ciudad dejó de obedecer. Una multitud atravesó las puertas del palacio antes del amanecer.','El reino se vació de lealtad. Tus estandartes ardieron en la plaza y nadie salió a defenderte.'],
@@ -72,6 +73,7 @@ const deathReasons={
   saberLow:['La ignorancia se volvió ley. Una epidemia de superstición terminó señalándote como la causa de todos los males.','Los archivos ardieron, las escuelas cerraron y el reino olvidó por qué debía obedecerte.'],
   saberHigh:['Los sabios concluyeron que la monarquía era una hipótesis innecesaria. Te reemplazaron por un Consejo de Cálculo.','La búsqueda de conocimiento abrió una puerta que nadie supo cerrar.'],
   age:['El cuerpo cedió antes que el reino. Odón cerró los ojos del soberano y pidió que nadie tocara la corona hasta el alba.','Se durmió durante un consejo sobre peajes y no despertó. Fue una muerte ofensivamente administrativa.','No fue una daga. Fue el invierno, por dentro.'],
+  realm:['El último estandarte se cayó. No quedó plaza que dijera tu nombre, ni un peaje que lo cobrara.','La corona siguió existiendo en el papel. La tierra, no. Eso basta para terminar un reinado.'],
   betrayal:['La copa llegó antes que la guardia. Los cuatro pilares seguían en pie. El oficio, no.'],
   betrayal_gold:['El vino tenía un dejo de cobre. Bruno juró que los libros cerraban. Cerraban, sí: sobre tu nombre.','Dormiste con el tesoro en calma. El copero no. Por eso despertó el reino sin vos.'],
   betrayal_protocol:['El ceremonial reservaba un asiento a tu izquierda. Desde ahí se corta la carne. Esa noche, también el reinado.','Firmaste de más y leíste de menos. El protocolo es un cuchillo que sonríe.'],
