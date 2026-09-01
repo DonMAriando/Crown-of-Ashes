@@ -716,7 +716,7 @@ function effectPreviewHTML(choice,precise){
   for(const k of STAT_KEYS){
     const v=choice.effects?.[k];if(v==null)continue;
     const dir=effectSign(v)>0?'up':'down';
-    const mag=level==='name'?'':`<em>${formatPreviewMag(v,level)}</em>`;
+    const mag=`<em>${level==='name'?(dir==='up'?'+':'−'):formatPreviewMag(v,level)}</em>`;
     parts.push(`<span class="fx-chip ${dir}"><span class="fx-ico">${STAT_ICONS[k]}</span>${STAT_LABELS[k]}${mag}</span>`);
   }
   return parts.join('');

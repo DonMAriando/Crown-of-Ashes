@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;600;700&display=swap" />
-  <link rel="stylesheet" href="style.css?v=2.30" />
+  <link rel="stylesheet" href="style.css?v=2.34" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.png?v=2.22" type="image/png" />
   <link rel="apple-touch-icon" href="icon.png?v=2.22" />
@@ -80,8 +80,8 @@
       </button>
       <div class="omens" id="omens"></div>
       <p class="whisper" id="whisper" aria-live="polite"></p>
-      <div class="choice-preview left" id="leftPreview"><span>←</span><b id="leftText">No</b><small id="leftEffects"></small></div>
-      <div class="choice-preview right" id="rightPreview"><b id="rightText">Sí</b><span>→</span><small id="rightEffects"></small></div>
+      <div class="choice-preview left" id="leftPreview"><span class="arrow">←</span><b id="leftText">No</b><small id="leftEffects"></small></div>
+      <div class="choice-preview right" id="rightPreview"><b id="rightText">Sí</b><span class="arrow">→</span><small id="rightEffects"></small></div>
 
       <div class="card-stack" id="cardStack">
         <div class="ghost-card back-2"></div>
@@ -177,7 +177,7 @@
     <div class="modal-head"><div><p class="eyebrow">OFICIO DE REINAR</p><h2>Cómo se sostiene la corona</h2></div><button class="close-btn" data-close="helpDialog">×</button></div>
     <div class="help-body">
       <p>Arrastrá la carta, usá los botones o las flechas ← →. Cada decisión mueve cuatro pilares. Si uno toca <b>0</b> o <b>100</b>, el reinado termina.</p>
-      <p>A los costados de la carta —o bajo los botones, en el teléfono— ves qué pilares se mueven. Verde sube, rojo baja. En Crónica, los puntos dicen más o menos cuánto; en Consejo Real, el número. En Corona de Hierro y Oráculo Roto, solo el nombre. El menú puede apagar la magnitud.</p>
+      <p>A los costados de la carta —o bajo los botones, en el teléfono— ves qué pilares se mueven. El nombre queda en tinta; el punto (o el número, en Consejo Real) dice si sube o baja. En Corona de Hierro y Oráculo Roto, un + o un −. El menú puede apagar la magnitud.</p>
       <ul>
         <li><b>Pueblo</b> — lealtad de plazas y aldeas. El amor extremo también destituye.</li>
         <li><b>Tesoro</b> — moneda, crédito y graneros. Demasiado oro crea un poder paralelo.</li>
@@ -276,6 +276,6 @@
   <script src="cards-arcs.js?v=2.20"></script>
   <script src="audio.js?v=2.17"></script>
   <script src="fx.js?v=2.18"></script>
-  <script src="game.js?v=2.30"></script>
+  <script src="game.js?v=2.31"></script>
 </body>
 </html>
