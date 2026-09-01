@@ -37,7 +37,8 @@ El botón ♪ corta solo las camas. Los toques al deslizar, sellar o consultar s
 - El reino se hereda: obras, edictos, facciones y vecinos no vuelven a 50/50.
 - Edad que se siente: el mazo cambia a los 40, 55 y 65; Odón anuncia la muerte natural en una carta. El heredero, si tiene nombre, deja de ser «el niño». Si es menor de dieciséis, hay regencia que discute el sello.
 - Odón puede ceder el oficio: Iva Grís toma el pulso. Se puede abdicar de verdad. Quien no heredó puede volver ~a los 18.
-- Códice con **Linaje**, **Crónicas** selladas (al fundar otra casa o cerrar el libro), mapa manchado por obras, anales del reinado actual, legado con leyes de casa.
+- Códice con **Linaje**, **Crónicas** selladas (al fundar otra casa o cerrar el libro), mapa manchado por obras, anales del reinado actual, legado con leyes de casa. En la mesa hay un mapita vivo; tocarlo abre el Códice en **Mapa**.
+- Intro obligatoria: Software Society presenta, después el título y el icono pintado. No se saltea.
 - El salón cambia de ropa con la estación y los agüeros (velo sobre el mismo `hall.jpg`).
 - Retratos de corte, salón de piedra propio (el dorso queda en el mazo), carta de pergamino, muerte y coronación como escena, tres imágenes de clímax.
 - Mesa leíble sobre la nave: pilares opacos y placas de elección, no texto al 20% sobre la piedra.
@@ -65,7 +66,8 @@ El botón ♪ corta solo las camas. Los toques al deslizar, sellar o consultar s
 | `fx.js` | Vela del salón y ráfagas (sin librería) |
 | `musica/` | Camas de Suno (ver `musica/CAMAS.md`) |
 | `game.js` | Motor, sucesión, linaje, guardado, mute |
-| `img/` | Salón, retratos, dorso, clímax, muerte, coronación |
+| `img/` | Salón, retratos, dorso, clímax, muerte, coronación, logo de Software Society |
+| `icon.png` | Marca pintada (favicon, PWA, intro y mesa) |
 | `manifest.webmanifest` + `sw.js` | PWA |
 
 Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferencia de música también queda en `corona-de-ceniza-music`.
@@ -75,7 +77,7 @@ Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferenci
 - Los retratos y las escenas son arte generado para esta corte, no pinturas licenciadas. El hueco de la carta es una franja ancha (cara y hombros), no el óleo entero.
 - Las camas son pistas Opus en `musica/` (Suno). Si el navegador no reproduce Opus, busca el mismo nombre en MP3. Los toques de las cartas siguen en Web Audio. El botón ♪ corta solo las camas.
 - Chrome (y otros) no sueltan el audio hasta el primer clic. Fundar, continuar o tocar ♪ basta.
-- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.20` al momento de escribir esto).
+- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.27` al momento de escribir esto).
 
 Al publicar un cambio de interfaz o de motor: bump de `style.css?v=` / `audio.js?v=` / `fx.js?v=` / `game.js?v=` en **los dos** HTML, bump de `CACHE` en `sw.js`, y una fila nueva arriba de la bitácora.
 
@@ -85,6 +87,8 @@ Qué se subió a `main`, cuándo y con qué commit. Lo más nuevo va arriba. Los
 
 | Fecha | Commit | Cómo llegó | Qué se puede hacer desde entonces |
 |---|---|---|---|
+| 1 sep 2026 | [`9afd135`](https://github.com/DonMAriando/Crown-of-Ashes/commit/9afd135) | Push a `main` | El mapa de Valdoria queda a la vista en la mesa. Late cuando una decisión mancha el terreno; si la carta mira una región, esa zona se ilumina. Tocarlo abre el Códice en **Mapa**. |
+| 30 ago 2026 | [`6167905`](https://github.com/DonMAriando/Crown-of-Ashes/commit/6167905) | Push a `main` | Intro obligatoria: Software Society presenta, después el título con el icono pintado. No hay Saltar. Favicon y PWA usan `icon.png`. |
 | 30 ago 2026 | [`54a5720`](https://github.com/DonMAriando/Crown-of-Ashes/commit/54a5720) | Push a `main` | El heredero nombrado deja de ser «el niño». La regencia discute el sello. Odón puede ceder la silla a Iva Grís. Se puede abdicar. El hermano que no heredó puede volver. El Códice guarda **Crónicas** al fundar otra casa o sellar. El mapa mancha las obras. El salón cambia de ropa con la estación. Contenido 2.4.0. |
 | 30 ago 2026 | [`0c2fab3`](https://github.com/DonMAriando/Crown-of-Ashes/commit/0c2fab3) | Push a `main` | El salón tiene vela (sigue el puntero en desktop; en el teléfono respira). Al decidir hay viruta de oro o ceniza; al morir, el hall se apaga. Peste, guerra y vacío dejan motas. Sin Three.js: `fx.js` y “Reducir movimiento” lo apaga. |
 | 30 ago 2026 | [`b1ad7a1`](https://github.com/DonMAriando/Crown-of-Ashes/commit/b1ad7a1) | Push a `main` | La edad cambia el mazo (40, 55, 65). Odón anuncia la muerte natural en una carta. El heredero se ve en la mesa y envejece con vos; si es menor de 16, hay regencia. El Códice gana **Linaje**: fila de coronas, detonantes y horquillas (segunda cuna / crisis). Los Anales quedan como diario de este reinado. Contenido 2.3.0. |
