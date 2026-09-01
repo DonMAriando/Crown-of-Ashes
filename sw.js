@@ -1,4 +1,4 @@
-const CACHE = 'corona-de-ceniza-v2.26';
+const CACHE = 'corona-de-ceniza-v2.27';
 const ASSETS = [
   './',
   './index.html',

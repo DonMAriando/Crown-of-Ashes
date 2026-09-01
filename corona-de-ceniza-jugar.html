@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;600;700&display=swap" />
-  <link rel="stylesheet" href="style.css?v=2.26" />
+  <link rel="stylesheet" href="style.css?v=2.27" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.png?v=2.22" type="image/png" />
   <link rel="apple-touch-icon" href="icon.png?v=2.22" />
@@ -74,6 +74,10 @@
     <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
     <main class="game-stage">
+      <button type="button" class="realm-map" id="realmMap" aria-label="Abrir mapa de Valdoria">
+        <span class="realm-map-frame" id="realmMapSvg"></span>
+        <span class="realm-map-caption">Valdoria</span>
+      </button>
       <div class="omens" id="omens"></div>
       <p class="whisper" id="whisper" aria-live="polite"></p>
       <div class="choice-preview left" id="leftPreview"><span>←</span><b id="leftText">No</b><small id="leftEffects"></small></div>
@@ -270,6 +274,6 @@
   <script src="cards-arcs.js?v=2.20"></script>
   <script src="audio.js?v=2.17"></script>
   <script src="fx.js?v=2.18"></script>
-  <script src="game.js?v=2.26"></script>
+  <script src="game.js?v=2.27"></script>
 </body>
 </html>

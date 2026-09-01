@@ -70,13 +70,14 @@ function patchState(s){
 }
 
 let state=null,rng=null,drag={active:false,startX:0,x:0,vx:0,lastX:0,lastT:0},audio={ac:null,drone:null};
+let mapFlashIds=[],mapFlashTimer=0;
 const el={};
 
 function cacheEls(){
   ['card','cardText','speakerName','speakerTitle','portraitGlyph','advisorMood','cardTag','rarityTag',
    'leftText','rightText','leftEffects','rightEffects','leftBtnText','rightBtnText','swipeLeftText','swipeRightText',
    'rulerName','yearLabel','reignLabel','ageLabel','heirLabel','seasonLabel','omens','whisper','legacyValue','chronicleCount',
-   'seedReadout','soundToggle','hintToggle','musicToggle','motionToggle','consultBtn','consultHint','cardEcho','fxLayer','portraitImg','deathArt','musicBtn']
+   'seedReadout','soundToggle','hintToggle','musicToggle','motionToggle','consultBtn','consultHint','cardEcho','fxLayer','portraitImg','deathArt','musicBtn','realmMap','realmMapSvg']
     .forEach(id=>el[id]=$('#'+id));
 }
 
@@ -663,6 +664,7 @@ function choose(side,opts={}){
     $('#confirmDialog').showModal();return;
   }
   state.busy=true;
+  const mapBefore=mapSignature();
   try{
     sfx('swipe',side);
     if(typeof CourtFx!=='undefined')CourtFx.swipe(side);
@@ -694,8 +696,11 @@ function choose(side,opts={}){
     if(card.tutorial&&card.id==='tut-5')state.tutorialDone=true;
     checkSecrets();checkAchievements();state.rngCounter=rng.counter;saveAll();
     spawnDeltas(realized);
+    const mapAfter=mapSignature();
+    const changed=mapChangedIds(mapBefore,mapAfter);
     animateChoice(side,()=>{
       try{
+        if(changed.length)flashMapRegions(changed);
         renderStats();renderHeader();
         if(checkAbdicate()||checkDeath()||checkAgeDeath()||checkBetrayalDeath()||checkSpecialEnding())return;
         dealCard();
@@ -915,6 +920,7 @@ function renderCard(){
   if(stack){stack.classList.remove('dealing');void stack.offsetWidth;if(!reduceMotionOn())stack.classList.add('dealing')}
   if(!reduceMotionOn()){void el.card.offsetWidth;el.card.classList.add('deal');if(typeof CourtFx!=='undefined')CourtFx.deal()}
   requestAnimationFrame(()=>el.card.style.transition='transform .18s, opacity .18s');
+  renderRealmMap();
 }
 function flexLabel(label,side){
   const clem=state.personality?.clemencia||0;
@@ -968,6 +974,7 @@ function renderHeader(){
     CourtFx.setQuiet(reduceMotionOn());
     CourtFx.setMood(hasFlag('plague_active')?'plague':(hasFlag('war_active')||hasFlag('mutiny_on'))?'war':(hasFlag('void_active')||hasFlag('void_door'))?'void':'');
   }
+  renderRealmMap();
 }
 function heirHudLine(){
   const h=state.heir;
@@ -1185,13 +1192,76 @@ function sparkSVG(){
   const colors={pueblo:'#8fbf9c',tesoro:'#d2b777',ejercito:'#c28181',saber:'#8aa0c8'};
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-label="Curva de los cuatro pilares">${STAT_KEYS.map(k=>`<path d="${path(k)}" fill="none" stroke="${colors[k]}" stroke-width="1.6"/>`).join('')}</svg>`;
 }
-function mapSVG(){
-  return `<svg class="map-svg" viewBox="0 0 260 230" role="img" aria-label="Mapa de Valdoria">${REGIONS.map(r=>{
+function mapSVG(opts={}){
+  const gaze=new Set(opts.gaze||[]);
+  const flash=new Set(opts.flash||[]);
+  const paths=REGIONS.map(r=>{
     const on=r.on?r.on(state):false;const hurt=r.hurt?r.hurt(state):false;
     const built=r.mark?r.mark(state):'';
-    const cls=['region',on?'on':'',hurt?'hurt':'',built?'built':''].filter(Boolean).join(' ');
+    const cls=['region',on?'on':'',hurt?'hurt':'',built?'built':'',gaze.has(r.id)?'gaze':'',flash.has(r.id)?'flash':''].filter(Boolean).join(' ');
     return `<path class="${cls}" data-id="${r.id}" d="${r.d}"><title>${r.name}${built?' · '+built:''}</title></path>`;
-  }).join('')}<text x="130" y="222" text-anchor="middle" fill="#8f899b" font-size="9" font-family="Georgia">Valdoria y sus orillas</text></svg>`;
+  }).join('');
+  const caption=opts.mini?'':`<text x="130" y="222" text-anchor="middle" fill="#8f899b" font-size="9" font-family="Georgia">Valdoria y sus orillas</text>`;
+  return `<svg class="map-svg" viewBox="0 0 260 230" role="img" aria-label="Mapa de Valdoria">${paths}${caption}</svg>`;
+}
+function mapSignature(){
+  if(!state)return '';
+  return REGIONS.map(r=>[r.id,r.on&&r.on(state)?1:0,r.hurt&&r.hurt(state)?1:0,(r.mark&&r.mark(state))||''].join('\t')).join('\n');
+}
+function mapChangedIds(prev,next){
+  if(!prev||!next||prev===next)return [];
+  const parse=s=>Object.fromEntries(s.split('\n').map(line=>{const i=line.indexOf('\t');return [line.slice(0,i),line.slice(i+1)]}));
+  const a=parse(prev),b=parse(next);
+  return REGIONS.map(r=>r.id).filter(id=>a[id]!==b[id]);
+}
+function cardGazeRegions(card){
+  if(!card)return [];
+  const tags=new Set(card.tags||[]);
+  const blob=`${card.id} ${card.place||''} ${card.chain||''} ${(card.requires||[]).join(' ')} ${(card.tags||[]).join(' ')}`.toLowerCase();
+  const hit=[];
+  const add=id=>{if(!hit.includes(id))hit.push(id)};
+  if(card.place){
+    const p=String(card.place).toLowerCase();
+    if(/valle/.test(p))add('valle');
+    if(/sur|viñedo/.test(p))add('sur');
+    if(/campana|barrio/.test(p))add('capital');
+  }
+  if(tags.has('mar')||/puerto|costa|pirat|harbor|mapmaker|franco|barco/.test(blob))add('puerto');
+  if(/isla|bruma/.test(blob))add('isla');
+  if(tags.has('frontera')||/frontera|academia|pacto_norte|wolf|refug/.test(blob))add('frontera');
+  if(/marisma|flood|inund|dique/.test(blob))add('marismas');
+  if(/piedra/.test(blob))add('piedra');
+  if(/calzada|silos|grain|famine|royal-road/.test(blob))add('sur');
+  if(/escuela|public-school|bridge-toll/.test(blob))add('valle');
+  if(/war_|paso de ceniza|tres.banderas/.test(blob))add('paso');
+  if(/hospital|imprenta|printing|public-hospital|sewer|festival/.test(blob))add('capital');
+  return hit.slice(0,2);
+}
+function renderRealmMap(){
+  const wrap=el.realmMap,box=el.realmMapSvg;
+  if(!wrap||!box)return;
+  const live=!!state;
+  wrap.classList.toggle('is-live',live);
+  if(!live){box.innerHTML='';return}
+  box.innerHTML=mapSVG({mini:true,gaze:cardGazeRegions(state.currentCard),flash:mapFlashIds});
+}
+function flashMapRegions(ids){
+  mapFlashIds=(ids||[]).slice(0,4);
+  if(el.realmMap){
+    el.realmMap.classList.add('is-beat');
+    clearTimeout(mapFlashTimer);
+    mapFlashTimer=setTimeout(()=>{
+      mapFlashIds=[];
+      if(el.realmMap)el.realmMap.classList.remove('is-beat');
+      renderRealmMap();
+    },reduceMotionOn()?180:1400);
+  }
+  renderRealmMap();
+}
+function openCodex(tab){
+  if(!state)return;
+  renderCodex(tab||'lineage');
+  $('#codexDialog').showModal();
 }
 function lineageNodeHTML(r,living){
   const ev=(r.events||[]).map(e=>`<span>${escapeHtml(e.label)}</span>`).join('')||(living?'<span>el reinado aún se escribe</span>':'<span>sin detonante nombrado</span>');
@@ -1326,7 +1396,8 @@ function bind(){
   $('#leftBtn').onclick=()=>choose('left');$('#rightBtn').onclick=()=>choose('right');
   $('#consultBtn').onclick=consultCouncil;
   $('#chronicleBtn').onclick=openChronicle;$('#exportBookBtn').onclick=exportBook;
-  $('#codexBtn').onclick=()=>{renderCodex();$('#codexDialog').showModal()};
+  $('#codexBtn').onclick=()=>openCodex();
+  if(el.realmMap)el.realmMap.onclick=()=>openCodex('map');
   $$('.tab').forEach(b=>b.onclick=()=>renderCodex(b.dataset.tab));
   $('#codexContent').addEventListener('click',e=>{const b=e.target.closest('[data-perk]');if(b)buyPerk(b.dataset.perk)});
   $('#nextReignBtn').onclick=nextReign;
