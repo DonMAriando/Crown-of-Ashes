@@ -2,7 +2,7 @@
 
 Juego original de estrategia narrativa en español (vos rioplatense). Gobernás Valdoria a través de generaciones: cada decisión deja una cicatriz; cada muerte, una herencia.
 
-Versión de contenido **2.4.0**. Repositorio: [DonMAriando/Crown-of-Ashes](https://github.com/DonMAriando/Crown-of-Ashes).
+Versión de contenido **2.5.1**. Repositorio: [DonMAriando/Crown-of-Ashes](https://github.com/DonMAriando/Crown-of-Ashes).
 
 ## Cómo jugar
 
@@ -30,14 +30,14 @@ El botón ♪ corta solo las camas. Los toques al deslizar, sellar o consultar s
 
 ## Qué hay ahora
 
-- Coronación tutorial, pistas en la carta (también en el teléfono) y números que saltan al decidir.
+- Coronación tutorial, pistas en la carta (también en el teléfono) y números que saltan al decidir. Las placas dicen el pilar y el sentido: verde sube, rojo baja.
 - ~200 cartas escritas, peticiones procedurales con memoria de lugares, estaciones y doce consejeros que se vuelven aliados o enemigos.
 - Arcos largos: Fiebre de Vidrio, Tres Banderas, Observatorio Negro, República de Tinta, Hambruna del Sur, Cisma del Estuario, crisis dinástica, viaje a Sahr, motín, boda real, inundación, herejía de la estrella.
 - Tres conspiraciones (copa, protocolo, correo): una por corona, avisada, pueden matar sin tocar 0 ni 100. Si te matan, el heredero hereda al asesino.
 - El reino se hereda: obras, edictos, facciones y vecinos no vuelven a 50/50.
 - Edad que se siente: el mazo cambia a los 40, 55 y 65; Odón anuncia la muerte natural en una carta. El heredero, si tiene nombre, deja de ser «el niño». Si es menor de dieciséis, hay regencia que discute el sello.
 - Odón puede ceder el oficio: Iva Grís toma el pulso. Se puede abdicar de verdad. Quien no heredó puede volver ~a los 18.
-- Códice con **Linaje**, **Crónicas** selladas (al fundar otra casa o cerrar el libro), mapa manchado por obras, anales del reinado actual, legado con leyes de casa. En la mesa hay un mapita vivo; tocarlo abre el Códice en **Mapa**.
+- Códice con **Linaje**, **Crónicas** selladas (al fundar otra casa o cerrar el libro), mapa generado por la semilla, anales del reinado actual, legado con leyes de casa. En la mesa hay un mapita vivo; tocarlo abre el Códice en **Mapa**. El sello empieza chico, crece con los años y los arcos, y puede perder tierras. Si cae la última, el reinado termina: al heredero lo coronan señor de la tierra donde estaba.
 - Intro obligatoria: Software Society presenta, después el título y el icono pintado. No se saltea.
 - El salón cambia de ropa con la estación y los agüeros (velo sobre el mismo `hall.jpg`).
 - Retratos de corte, salón de piedra propio (el dorso queda en el mazo), carta de pergamino, muerte y coronación como escena, tres imágenes de clímax.
@@ -77,7 +77,7 @@ Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferenci
 - Los retratos y las escenas son arte generado para esta corte, no pinturas licenciadas. El hueco de la carta es una franja ancha (cara y hombros), no el óleo entero.
 - Las camas son pistas Opus en `musica/` (Suno). Si el navegador no reproduce Opus, busca el mismo nombre en MP3. Los toques de las cartas siguen en Web Audio. El botón ♪ corta solo las camas.
 - Chrome (y otros) no sueltan el audio hasta el primer clic. Fundar, continuar o tocar ♪ basta.
-- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.27` al momento de escribir esto).
+- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.30` al momento de escribir esto).
 
 Al publicar un cambio de interfaz o de motor: bump de `style.css?v=` / `audio.js?v=` / `fx.js?v=` / `game.js?v=` en **los dos** HTML, bump de `CACHE` en `sw.js`, y una fila nueva arriba de la bitácora.
 
@@ -87,6 +87,7 @@ Qué se subió a `main`, cuándo y con qué commit. Lo más nuevo va arriba. Los
 
 | Fecha | Commit | Cómo llegó | Qué se puede hacer desde entonces |
 |---|---|---|---|
+| 1 sep 2026 | [`6c2e4c4`](https://github.com/DonMAriando/Crown-of-Ashes/commit/6c2e4c4) | Push a `main` | Cada semilla dibuja un mapa distinto. El imperio arranca chico, crece con los años y los arcos, y puede perder tierras. Si cae la última, el reinado termina; al heredero lo coronan señor del resto. Las placas de elección nombran el pilar (verde/rojo). Contenido 2.5.1. |
 | 1 sep 2026 | [`9afd135`](https://github.com/DonMAriando/Crown-of-Ashes/commit/9afd135) | Push a `main` | El mapa de Valdoria queda a la vista en la mesa. Late cuando una decisión mancha el terreno; si la carta mira una región, esa zona se ilumina. Tocarlo abre el Códice en **Mapa**. |
 | 30 ago 2026 | [`6167905`](https://github.com/DonMAriando/Crown-of-Ashes/commit/6167905) | Push a `main` | Intro obligatoria: Software Society presenta, después el título con el icono pintado. No hay Saltar. Favicon y PWA usan `icon.png`. |
 | 30 ago 2026 | [`54a5720`](https://github.com/DonMAriando/Crown-of-Ashes/commit/54a5720) | Push a `main` | El heredero nombrado deja de ser «el niño». La regencia discute el sello. Odón puede ceder la silla a Iva Grís. Se puede abdicar. El hermano que no heredó puede volver. El Códice guarda **Crónicas** al fundar otra casa o sellar. El mapa mancha las obras. El salón cambia de ropa con la estación. Contenido 2.4.0. |
