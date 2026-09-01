@@ -88,6 +88,7 @@ Qué se subió a `main`, cuándo y con qué commit. Lo más nuevo va arriba. Los
 
 | Fecha | Commit | Cómo llegó | Qué se puede hacer desde entonces |
 |---|---|---|---|
+| 1 sep 2026 | [`5fd0468`](https://github.com/DonMAriando/Crown-of-Ashes/commit/5fd0468) | Push a `main` | Los retratos de la corte vuelven a verse. El tinte de las generaciones nuevas ya no deja el hueco en negro. |
 | 1 sep 2026 | [`0f27244`](https://github.com/DonMAriando/Crown-of-Ashes/commit/0f27244) | Push a `main` | Las sillas de la mesa se heredan. Cada oficio envejece, puede dejar la silla, y el sucesor recuerda cómo trataste al anterior. Si se pierde el puerto, la almirante llega sin mar. Códice, pestaña Consejeros. Contenido 2.6.0. |
 | 1 sep 2026 | [`d512fce`](https://github.com/DonMAriando/Crown-of-Ashes/commit/d512fce) | Push a `main` | Las placas de elección ya no gritan: el nombre de la decisión manda; los pilares quedan en tinta chica, color solo en el punto, pegados a la carta. En el escritorio no se duplican sobre el swipe. |
 | 1 sep 2026 | [`6c2e4c4`](https://github.com/DonMAriando/Crown-of-Ashes/commit/6c2e4c4) | Push a `main` | Cada semilla dibuja un mapa distinto. El imperio arranca chico, crece con los años y los arcos, y puede perder tierras. Si cae la última, el reinado termina; al heredero lo coronan señor del resto. Las placas de elección nombran el pilar (verde/rojo). Contenido 2.5.1. |
