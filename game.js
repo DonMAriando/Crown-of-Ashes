@@ -48,6 +48,7 @@ function initialState(seed,dynasty,mode,meta,house){
     flags:[],edicts:[],places:{},
     persistent:{heirTrait:null,heirPeople:0,spouse:null,children:[],assassin:null,plotFace:null,plotsFoiled:0,shadowKin:[]},
     heir:null,regent:null,lineage:[],reignMarks:[],lineageStartAge:22,
+    court:null,officeLog:[],lastOfficeHandoff:0,
     guardUsed:false,undoUsed:false,tutorialDone:false,
     relationships:Object.fromEntries(Object.keys(ADVISORS).map(k=>[k,0])),
     history:[],samples:[],recent:[],seen:{},onceSeen:[],delayed:[],forced:[],
@@ -64,6 +65,9 @@ function patchState(s){
     settings:{...base.settings,...(s.settings||{})},house:{...base.house,...(s.house||{})},
     relationships:{...base.relationships,...(s.relationships||{})}};
   merged.meta={...defaultMeta(),...merged.meta};
+  merged.officeLog=Array.isArray(s.officeLog)?s.officeLog.slice():[];
+  merged.lastOfficeHandoff=s.lastOfficeHandoff||0;
+  merged.court=s.court&&typeof s.court==='object'?s.court:null;
   merged.busy=false;merged.pendingSide=null;
   if(!merged.currentCard||!merged.currentCard.left||!merged.currentCard.right)merged.currentCard=null;
   if(!merged.realm||!Array.isArray(merged.realm.layout))merged.realm=generateRealm(merged.seed);
@@ -160,11 +164,16 @@ function setRuler(fromHeir){
   state.rngCounter=rng.counter;
 }
 function pickRegent(){
-  const ids=['ines','odon','elian','bruno'].filter(id=>!(id==='odon'&&hasFlag('odon_gone')));
+  const ids=['ines','odon','elian','bruno'].filter(id=>{
+    if(id==='odon'&&hasFlag('odon_gone'))return false;
+    const o=state.court&&state.court[id];
+    if(o?.gone)return false;
+    return true;
+  });
   if(hasFlag('iva_court')||hasFlag('odon_gone'))ids.push('iva');
   ids.sort((a,b)=>(state.relationships[b]||0)-(state.relationships[a]||0));
   const id=ids[0]||'ines';
-  return {advisor:id,name:ADVISORS[id].name,until:16};
+  return {advisor:id,name:occupantName(id),until:16};
 }
 function heirKin(h){
   if(!h)return 'pariente';
@@ -246,6 +255,221 @@ function rememberPlace(place,work){
 }
 function discoverAdvisor(id){if(id&&!state.meta.discoveredAdvisors.includes(id))state.meta.discoveredAdvisors.push(id)}
 function relOf(id){return state.relationships[id]||0}
+function courtG(){return rng||new RNG((state?.seed||'0')+':court')}
+function foundingSeat(id,g){
+  const a=ADVISORS[id];
+  const age=a.startAge?g.int(a.startAge[0],a.startAge[1]):48;
+  return {name:a.name,gender:a.gender||'m',age,gen:1,kin:'fundador',house:a.house||'',prev:null,seated:1,stays:0,gone:false};
+}
+function usedCourtNames(){
+  const names=new Set();
+  if(state?.ruler)names.add(state.ruler.split(/\s+/)[0]);
+  if(state?.heir?.name)names.add(state.heir.name);
+  Object.values(state?.court||{}).forEach(o=>{if(o?.name)names.add(o.name.split(/\s+/)[0])});
+  (state.officeLog||[]).forEach(x=>{if(x.from)names.add(x.from.split(/\s+/)[0]);if(x.to)names.add(x.to.split(/\s+/)[0])});
+  return names;
+}
+function draftHeir(id,prev,g){
+  g=g||courtG();
+  const a=ADVISORS[id]||{};
+  const child=g.chance(.62);
+  const gender=child?(g.chance(.55)?prev.gender:(prev.gender==='f'?'m':'f')):(g.chance(.5)?'f':'m');
+  const taken=usedCourtNames();
+  taken.add(prev.name.split(/\s+/)[0]);
+  let name;
+  if(a.nick){
+    const nicks=COURT_NICKS.filter(n=>!taken.has(n)&&n!==prev.name);
+    name=nicks.length?g.pick(nicks):g.pick(COURT_NICKS);
+  }else{
+    const pool=(gender==='f'?NAME_F:NAME_M).filter(n=>!taken.has(n));
+    const first=pool.length?g.pick(pool):g.pick(gender==='f'?NAME_F:NAME_M);
+    const keepHouse=child&&a.house&&g.chance(.78);
+    const house=keepHouse?a.house:g.pick(COURT_HOUSES);
+    name=house?`${first} ${house}`:first;
+  }
+  const kin=child?(gender==='f'?'hija':'hijo'):(gender==='f'?'discípula':'discípulo');
+  return {name,gender,age:g.int(28,44),gen:(prev.gen||1)+1,kin,house:a.nick?'':(name.split(/\s+/).slice(1).join(' ')||a.house||''),prev:prev.name,seated:state.worldYear||1,stays:0,gone:false};
+}
+function hydrateCourtAges(court,s,g){
+  const year=s.worldYear||1;
+  for(const id of Object.keys(court)){
+    let occ=court[id];
+    if(!occ||occ.gone)continue;
+    occ.age=(occ.age||48)+(year>1?year-1:0);
+    const retire=ADVISORS[id]?.retire||70;
+    let guard=0;
+    while(occ.age>=retire+2&&year>=18&&guard<4){
+      const heir=draftHeir(id,occ,g);
+      heir.age=clamp(heir.age+Math.floor(Math.max(0,occ.age-retire)/3),28,retire-4);
+      s.officeLog=s.officeLog||[];
+      s.officeLog.push({office:id,from:occ.name,to:heir.name,year,why:'archivo',rel:0});
+      occ=heir;
+      guard++;
+    }
+    court[id]=occ;
+  }
+  if((s.officeLog||[]).length)s.lastOfficeHandoff=s.worldYear||s.lastOfficeHandoff||0;
+  if((s.flags||[]).includes('odon_gone')||(s.flags||[]).includes('iva_court')){
+    if(court.odon)court.odon.gone=true;
+    if(!court.iva){
+      court.iva=foundingSeat('iva',g);
+      court.iva.age=clamp(34+Math.floor(year*0.25),34,70);
+      court.iva.seated=year;
+      court.iva.kin='discípula';
+      court.iva.prev=court.odon?.name||ADVISORS.odon.name;
+    }
+  }
+  return court;
+}
+function seedCourt(s){
+  s=s||state;
+  const g=new RNG((s.seed||'0')+':court');
+  const court={};
+  for(const id of Object.keys(ADVISORS)){
+    if(id==='iva')continue;
+    court[id]=foundingSeat(id,g);
+  }
+  return hydrateCourtAges(court,s,g);
+}
+function ensureCourt(){
+  if(!state)return null;
+  if(!state.court||typeof state.court!=='object'||!state.court.ines)state.court=seedCourt(state);
+  state.officeLog=state.officeLog||[];
+  if((hasFlag('odon_gone')||hasFlag('iva_court'))&&!state.court.iva){
+    const g=new RNG((state.seed||'0')+':court-iva');
+    state.court.iva=foundingSeat('iva',g);
+    state.court.iva.kin='discípula';
+    state.court.iva.prev=state.court.odon?.name||ADVISORS.odon.name;
+    if(state.court.odon)state.court.odon.gone=true;
+  }
+  return state.court;
+}
+function occupant(id){
+  if(!state||!id)return null;
+  ensureCourt();
+  return state.court[id]||null;
+}
+function occupantName(id){
+  if(id==='odon'&&hasFlag('odon_gone')){
+    const iva=state.court?.iva;
+    if(iva&&!iva.gone&&iva.name)return iva.name;
+    return ADVISORS.iva.name;
+  }
+  const o=occupant(id);
+  if(o&&!o.gone&&o.name)return o.name;
+  return ADVISORS[id]?.name||'El Destino';
+}
+function occupantTitle(id){
+  const a=ADVISORS[id]||{};
+  const o=occupant(id);
+  const gender=o?.gender||a.gender||'m';
+  if(id==='soraya'){
+    const own=regionOwner('puerto');
+    if(own!=='ours'&&own!=='pact')return 'Almirante sin mar';
+  }
+  if(id==='roldan'){
+    const own=regionOwner('frontera');
+    if(own==='lost')return gender==='f'?'Mariscala del resto':'Mariscal del resto';
+  }
+  if(gender==='f')return a.titleF||a.title||'sin título';
+  return a.titleM||a.title||'sin título';
+}
+function speakerOf(id){
+  const a=ADVISORS[id]||{glyph:'✶',mood:'•',sil:'',portrait:''};
+  const o=occupant(id);
+  const gone=!!(o&&o.gone);
+  return {
+    name:gone?a.name:occupantName(id),
+    title:gone?a.title:occupantTitle(id),
+    glyph:a.glyph,mood:a.mood,sil:a.sil,portrait:a.portrait,
+    gen:(o&&!gone)?(o.gen||1):1,
+    age:o&&!gone?Math.round(o.age):null
+  };
+}
+function ageCourt(years){
+  if(!(years>0)||!state)return;
+  ensureCourt();
+  for(const o of Object.values(state.court)){
+    if(!o||o.gone)continue;
+    o.age=(o.age||40)+years;
+  }
+}
+function officeMemoryLine(rel,nextFirst,prevFirst){
+  if(rel>=18)return `${nextFirst} vio cómo tratabas a ${prevFirst}: con respeto. Trae esa deuda.`;
+  if(rel<=-18)return `${nextFirst} vio cómo tratabas a ${prevFirst}. No es una deuda amable.`;
+  return `${nextFirst} aprendió el oficio de ${prevFirst}, no el humor de palacio.`;
+}
+function makeOfficeCard(d){
+  const id=d.office;
+  const prev=occupant(id)||{name:ADVISORS[id]?.name||'Alguien',age:70,stays:0};
+  const heir=d.heir||draftHeir(id,prev);
+  d.heir=heir;
+  const prevFirst=prev.name.split(/\s+/)[0];
+  const nextFirst=heir.name.split(/\s+/)[0];
+  const mem=officeMemoryLine(relOf(id),nextFirst,prevFirst);
+  const title=occupantTitle(id);
+  let card;
+  if(d.type==='office_passed'){
+    card=C('office-passed-'+id,id,`${prev.name} no llegó al Consejo. La silla de ${title} estaba corrida. ${heir.name} espera en el umbral. ${mem}`,
+      O('Que entre',{saber:1},{special:'officeSeat'}),
+      O('Un minuto de silencio',{pueblo:2},{special:'officeSeat'}),
+      {tags:['dinastia','oficio'],rarity:'inusual',interrupt:true,years:0,weight:100,cooldown:0,once:false,consult:'El oficio no pregunta. Informa el recambio.'});
+  }else{
+    card=C('office-handoff-'+id,id,`${prev.name} dice que la silla de ${title} ya pesa. ${heir.name}, ${heir.kin}, ya sabe el oficio. ${mem}`,
+      O('Quedate un invierno',{saber:1},{special:'officeStay',relationship:{[id]:2}}),
+      O('La silla se deja',{saber:2,pueblo:1},{special:'officeSeat'}),
+      {tags:['dinastia','oficio'],rarity:'inusual',interrupt:true,years:0,weight:100,cooldown:0,once:false,allowGone:true,consult:'El oficio no se discute. Se deja o se niega un invierno.'});
+  }
+  card.office=id;card.heir=heir;
+  return card;
+}
+function seatOffice(id,heir,why){
+  ensureCourt();
+  const prev=state.court[id]||{name:ADVISORS[id]?.name||'Alguien',gen:1};
+  const next=heir||draftHeir(id,prev);
+  const oldRel=relOf(id);
+  const bias=oldRel>=18?8:oldRel<=-18?-12:0;
+  state.relationships[id]=clamp(Math.round(oldRel*0.5)+bias,-50,50);
+  if(prev&&!prev.gone){prev.gone=true;prev.leftYear=state.worldYear}
+  next.seated=state.worldYear;
+  next.gone=false;
+  state.court[id]=next;
+  state.officeLog=state.officeLog||[];
+  state.officeLog.push({office:id,from:prev.name,to:next.name,year:state.worldYear,why:why||'retiro',rel:oldRel,kin:next.kin});
+  if(state.officeLog.length>40)state.officeLog=state.officeLog.slice(-40);
+  state.lastOfficeHandoff=state.worldYear;
+  discoverAdvisor(id);
+  markReign(`La silla de ${occupantTitle(id)}`);
+  if(!(state.meta.secrets||[]).includes('Las sillas también se heredan'))addSecret('Las sillas también se heredan');
+  toast('El oficio se cede',`${next.name} ocupa la silla de ${prev.name.split(/\s+/)[0]}.`);
+}
+function maybeQueueOfficeHandoff(){
+  if(!state||!rng)return;
+  if(!state.tutorialDone&&state.reign===1)return;
+  if(state.worldYear<10)return;
+  if(state.delayed.some(d=>d.type==='office_handoff'||d.type==='office_passed'))return;
+  if((state.lastOfficeHandoff||0)>state.worldYear-4)return;
+  ensureCourt();
+  const due=[];
+  for(const id of Object.keys(state.court)){
+    if(id==='odon'&&!hasFlag('odon_gone'))continue;
+    if(id==='iva'&&!(hasFlag('iva_court')||hasFlag('odon_gone')))continue;
+    const o=state.court[id];
+    if(!o||o.gone)continue;
+    const retire=ADVISORS[id]?.retire||70;
+    if(o.age<retire-3)continue;
+    const over=o.age-(retire-3);
+    const p=clamp(over*0.048,0,.42);
+    if(o.age>=retire+7||rng.chance(p))due.push(id);
+  }
+  if(!due.length)return;
+  due.sort((a,b)=>(state.court[b].age||0)-(state.court[a].age||0));
+  const id=due[0];
+  const o=state.court[id];
+  const heir=draftHeir(id,o);
+  const passed=(o.stays||0)>=1&&o.age>=72;
+  state.delayed.push({type:passed?'office_passed':'office_handoff',office:id,heir,at:state.worldYear+rng.int(0,2),created:state.worldYear,interrupt:true});
+}
 
 function shuffleIn(g,arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=g.int(0,i);[a[i],a[j]]=[a[j],a[i]]}return a}
 function regionName(id){
@@ -590,7 +814,7 @@ function remapAdvisor(card){
   if(!card)return card;
   if(hasFlag('odon_gone')&&card.advisor==='odon'&&!card.allowGone){
     card.advisor='iva';
-    if(card.id&&String(card.id).includes('age_death'))card.consult='Iva no está preguntando. Está informando.';
+    if(card.id&&String(card.id).includes('age_death'))card.consult=`${occupantName('iva')} no está preguntando. Está informando.`;
   }
   return card;
 }
@@ -600,6 +824,7 @@ function delayedToCard(d){
     if(kin)kin.returned=true;
     addFlag('kin_returned');
   }
+  if(d.type==='office_handoff'||d.type==='office_passed')return remapAdvisor(makeOfficeCard(d));
   const blade=/^plot_(gold|protocol|cipher)_blade$/.exec(d.type);
   if(blade){
     const kind=blade[1];
@@ -661,7 +886,7 @@ function maybeQueueKinReturn(){
   state.delayed.push({type:'kin_return',at:state.worldYear+rng.int(0,2),created:state.worldYear,interrupt:true});
 }
 function getNextCard(){
-  maybeQueueAgeDeath();maybeQueueOdonFarewell();maybeQueueKinReturn();
+  maybeQueueAgeDeath();maybeQueueOdonFarewell();maybeQueueKinReturn();maybeQueueOfficeHandoff();
   if(!state.tutorialDone&&state.reign===1){
     const next=TUTORIAL.find(c=>!state.onceSeen.includes(c.id));
     if(next)return deepClone(next);
@@ -786,8 +1011,8 @@ function runSpecial(id){
     toast('Segunda cuna',`${child.name} nace. La corte ya discute primogenitura.`);
   }
   if(id==='ageDeath'){addFlag('age_dying')}
-  if(id==='agendaLaw'){state.agendaBias='law';state.lastAgenda=state.decision;toast('Agenda','Inés, Bruno y Elián tendrán más oído.')}
-  if(id==='agendaStreet'){state.agendaBias='street';state.lastAgenda=state.decision;toast('Agenda','Tala, Roldán y Lupo tendrán más oído.')}
+  if(id==='agendaLaw'){state.agendaBias='law';state.lastAgenda=state.decision;toast('Agenda',`${occupantName('ines').split(/\s+/)[0]}, ${occupantName('bruno').split(/\s+/)[0]} y ${occupantName('elian').split(/\s+/)[0]} tendrán más oído.`)}
+  if(id==='agendaStreet'){state.agendaBias='street';state.lastAgenda=state.decision;toast('Agenda',`${occupantName('tala').split(/\s+/)[0]}, ${occupantName('roldan').split(/\s+/)[0]} y ${occupantName('lupo').split(/\s+/)[0]} tendrán más oído.`)}
   if(id==='plotLook')plotLook();
   if(id==='plotIgnore')plotIgnore();
   if(id==='plotClue'){addFlag(hasFlag('plot_clue1')?'plot_clue2':'plot_clue1');state.hidden.inteligencia=clamp(state.hidden.inteligencia+3,-100,150)}
@@ -798,16 +1023,35 @@ function runSpecial(id){
   if(id==='shadowKeep'){state.hidden.corrupcion=clamp(state.hidden.corrupcion+6,-100,150);toast('El copero sigue','La casa prefiere no preguntar de qué murió el anterior.')}
   if(id==='odonStay'){
     if(!state.delayed.some(d=>d.type==='odon_farewell'))state.delayed.push({type:'odon_farewell',at:state.worldYear+rng.int(8,14),created:state.worldYear,interrupt:true});
-    toast('Un invierno más','Odón se queda. Iva espera junto a la silla.');
+    toast('Un invierno más',`${occupantName('odon')} se queda. Iva espera junto a la silla.`);
   }
   if(id==='odonGone'){
     addFlag('odon_gone');addFlag('iva_court');
     state.delayed=state.delayed.filter(d=>d.type!=='odon_farewell');
     state.relationships.iva=Math.round((state.relationships.odon||0)*0.7);
+    ensureCourt();
+    if(state.court.odon){state.court.odon.gone=true;state.court.odon.leftYear=state.worldYear}
+    state.court.iva={name:'Iva Grís',gender:'f',age:rng.int(34,44),gen:1,kin:'discípula',house:'Grís',prev:state.court.odon?.name||ADVISORS.odon.name,seated:state.worldYear,stays:0,gone:false};
+    state.officeLog=state.officeLog||[];
+    state.officeLog.push({office:'odon',from:state.court.odon?.name||ADVISORS.odon.name,to:'Iva Grís',year:state.worldYear,why:'cesión',rel:state.relationships.odon||0,kin:'discípula'});
     discoverAdvisor('iva');
     addEdict('Iva Grís toma el pulso');
     addSecret('La silla de Odón se deja, no se hereda');
     toast('El oficio se cede','Iva Grís ocupa la silla. Odón no la discute.');
+  }
+  if(id==='officeStay'){
+    const card=state.currentCard;
+    const office=card?.office||card?.advisor;
+    const o=occupant(office);
+    if(o)o.stays=(o.stays||0)+1;
+    state.delayed=state.delayed.filter(d=>d.office!==office);
+    state.delayed.push({type:'office_handoff',office,heir:card?.heir,at:state.worldYear+rng.int(8,14),created:state.worldYear,interrupt:true});
+    toast('Un invierno más',`${occupantName(office)} se queda. ${card?.heir?.name||'El sucesor'} espera junto a la silla.`);
+  }
+  if(id==='officeSeat'){
+    const card=state.currentCard;
+    const why=card?.id&&String(card.id).includes('passed')?'muerte':'retiro';
+    seatOffice(card?.office||card?.advisor,card?.heir,why);
   }
   if(id==='kinRefuse'){
     addFlag('kin_spurned');
@@ -930,11 +1174,25 @@ function substNames(s){
   const kin=kinOnStage();
   const kinWord=kin?.name||'un pariente';
   const regent=state.regent?.name||'el Consejo';
-  return String(s||'')
+  let t=String(s||'')
     .replace(/\{traidor\}/g,state.persistent.plotFace||'el traidor')
     .replace(/\{heredero\}/g,heirWord)
     .replace(/\{kin\}/g,kinWord)
     .replace(/\{regente\}/g,regent);
+  if(state?.court||state?.seed){
+    ensureCourt();
+    const pairs=[];
+    for(const id of Object.keys(ADVISORS)){
+      const canon=ADVISORS[id].name;
+      const now=occupantName(id);
+      if(now&&now!==canon)pairs.push([canon,now]);
+      const cf=canon.split(/\s+/)[0],nf=now.split(/\s+/)[0];
+      if(cf&&nf&&cf!==nf)pairs.push([cf,nf]);
+    }
+    pairs.sort((a,b)=>b[0].length-a[0].length);
+    for(const [from,to] of pairs){if(from&&to&&from!==to)t=t.split(from).join(to)}
+  }
+  return t;
 }
 function checkBetrayalDeath(){
   if(!hasFlag('plot_killed'))return false;
@@ -1015,14 +1273,15 @@ function choose(side,opts={}){
       if(state.heir)state.heir.age=(state.heir.age||1)+years;
       (state.persistent.children||[]).forEach(c=>{c.age=(c.age||0)+years});
       (state.persistent.shadowKin||[]).forEach(k=>{k.age=(k.age||0)+years});
+      ageCourt(years);
       state.season=(state.season+years)%4;pulseYear();
       if(state.rulerAge>=65)markReign('Corona larga');
     }
-    maybeSeedHeir();maybeCloseRegency();maybeQueueAgeDeath();maybeQueueOdonFarewell();maybeQueueKinReturn();
+    maybeSeedHeir();maybeCloseRegency();maybeQueueAgeDeath();maybeQueueOdonFarewell();maybeQueueKinReturn();maybeQueueOfficeHandoff();
     syncRealmFromFlags();maybeGrowRealm(years);
     state.consulted=false;
     scheduleWorldEvents();updateHiddenMilestones();
-    state.history.unshift({year:state.reignYear,world:state.worldYear,reign:state.reign,ruler:state.ruler,speaker:ADVISORS[card.advisor]?.name||'Destino',text:cardTextOf(card),choice:choice.label,effects:realized,annal:''});
+    state.history.unshift({year:state.reignYear,world:state.worldYear,reign:state.reign,ruler:state.ruler,speaker:speakerOf(card.advisor).name,text:cardTextOf(card),choice:choice.label,effects:realized,annal:''});
     state.history[0].annal=annalLine(state.history[0]);
     state.history=state.history.slice(0,160);
     state.samples.push({year:state.worldYear,...state.stats});if(state.samples.length>220)state.samples.shift();
@@ -1241,7 +1500,7 @@ function pulseYear(){
 }
 function renderCard(){
   const c=state.currentCard;if(!c||!c.left||!c.right){state.currentCard=null;return}
-  const a=ADVISORS[c.advisor]||{name:'El Destino',title:'sin título',glyph:'✶',mood:'•',sil:''};
+  const a=speakerOf(c.advisor);
   releaseCard();
   el.card.style.transition='none';el.card.style.transform='';el.card.style.opacity='1';el.card.classList.remove('deal');
   el.cardText.textContent=cardTextOf(c);
@@ -1252,6 +1511,8 @@ function renderCard(){
   el.portraitGlyph.innerHTML='<i class="sil-head"></i><i class="sil-body"></i>';
   const art=artForCard(c),frame=$('#portrait');
   if(el.portraitImg&&frame){
+    frame.classList.remove('gen-2','gen-3','gen-4');
+    if((a.gen||1)>1)frame.classList.add('gen-'+Math.min(4,a.gen));
     if(art){el.portraitImg.src=art;el.portraitImg.alt=a.name;frame.classList.add('has-art')}
     else{el.portraitImg.removeAttribute('src');el.portraitImg.alt='';frame.classList.remove('has-art')}
   }
@@ -1287,7 +1548,7 @@ function canUseConsult(c){
 function consultCouncil(){
   const c=state.currentCard;if(!canUseConsult(c))return;
   state.consulted=true;state.lastConsult=state.worldYear;
-  const a=ADVISORS[c.advisor];
+  const a=speakerOf(c.advisor);
   const line=c.consult||`${a?.name||'El Consejo'} murmura: izquierda ${effectPreviewText(c.left,true) || 'casi nada'}; derecha ${effectPreviewText(c.right,true)||'casi nada'}.`;
   el.consultHint.textContent=substNames(line);
   fillFx([el.leftEffects,el.leftBtnFx,el.swipeLeftFx],c.left,true);
@@ -1476,7 +1737,7 @@ function loadGame(){
   try{
     const raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(SAVE_KEY_V1);
     if(!raw)return false;
-    state=patchState(JSON.parse(raw));rng=new RNG(state.seed,state.rngCounter||0);if(!state.ruler)setRuler();applyHouse();return true;
+    state=patchState(JSON.parse(raw));rng=new RNG(state.seed,state.rngCounter||0);ensureCourt();if(!state.ruler)setRuler();applyHouse();return true;
   }catch(e){console.error(e);return false}
 }
 function startNew(opts={}){
@@ -1488,13 +1749,13 @@ function startNew(opts={}){
   const house={color:$('#colorInput').value||'#c6a45b',motto:$('#mottoInput').value.trim(),founder:$('#founderInput').value.trim()};
   state=initialState(seed,dynasty,mode,meta,house);
   if(typeof CourtFx!=='undefined')CourtFx.lift();
-  rng=new RNG(seed);state.realm=generateRealm(seed);state.rulerGender=pickGender();applyStartPerks();setRuler();applyHouse();saveAll();
+  rng=new RNG(seed);state.realm=generateRealm(seed);state.rulerGender=pickGender();applyStartPerks();setRuler();ensureCourt();applyHouse();saveAll();
   $('#startDialog').close();renderAll();dealCard();ensureAudio();tuneDrone();
   const extra=(state.realm.home||[]).filter(id=>id!=='capital').map(regionName).join(' y ');
   toast(opts.daily?'Desafío del día':'La crónica comienza',`${state.ruler} recibe la Corona de Ceniza. Sostiene Valdoria${extra?' y '+extra:''}; el resto aún no está en el sello.`);
 }
 function exportSave(){saveAll();const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`corona-de-ceniza-${state.dynasty.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.json`;a.click();URL.revokeObjectURL(a.href)}
-function importSave(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s.seed||!s.stats)throw new Error('Formato inválido');state=patchState(s);rng=new RNG(state.seed,state.rngCounter||0);saveAll();$('#menuDialog').close();renderAll();renderCard();toast('Partida importada',`Dinastía ${state.dynasty}`)}catch(e){toast('No se pudo importar',e.message)}};r.readAsText(file)}
+function importSave(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s.seed||!s.stats)throw new Error('Formato inválido');state=patchState(s);rng=new RNG(state.seed,state.rngCounter||0);ensureCourt();saveAll();$('#menuDialog').close();renderAll();renderCard();toast('Partida importada',`Dinastía ${state.dynasty}`)}catch(e){toast('No se pudo importar',e.message)}};r.readAsText(file)}
 function exportBook(){
   const lines=[
     `# ${state.dynasty}`,
@@ -1509,6 +1770,9 @@ function exportBook(){
       const fork=(r.fork||[]).map(f=>`${f.name} (${f.reason})`).join(', ');
       return `- ${r.name}, reinado ${roman(r.reign)}, ${r.years} años (${r.startAge}–${r.endAge}). ${r.cause}. Hereda ${r.heirName}, ${r.kin}, ${r.heirAge} años. ${ev}.${fork?' No tomaron la corona: '+fork+'.':''}`;
     }):['- Todavía una sola corona.']),
+    '',
+    '## Oficios',
+    ...((state.officeLog||[]).length?(state.officeLog||[]).map(x=>`- Año ${x.year}: ${x.from} → ${x.to}. ${x.kin||''} · ${x.why||'retiro'}.`):['- Todavía las sillas fundadoras.']),
     '',
     '## Edictos y obras',
     ...(state.edicts.length?state.edicts.map(e=>`- ${e.name} (año mundial ${e.year})`):['- (ninguno)']),
@@ -1650,7 +1914,26 @@ function renderCodex(tab='lineage'){
   }
   if(tab==='achievements')box.innerHTML=ACHIEVEMENTS.map(([id,t,d,i])=>`<div class="achievement ${state.meta.achievements.includes(id)?'unlocked':''}"><div class="badge">${state.meta.achievements.includes(id)?i:'?'}</div><div><b>${state.meta.achievements.includes(id)?t:'Logro oculto'}</b><small>${state.meta.achievements.includes(id)?d:'Seguí gobernando para descubrirlo.'}</small></div></div>`).join('');
   if(tab==='legacy')box.innerHTML=PERKS.map(([id,t,d,cost,icon])=>{const own=state.meta.perks?.includes(id),can=state.meta.legacy>=cost;return `<div class="achievement ${own?'unlocked':''}"><div class="badge">${icon}</div><div><b>${t}</b><small>${d}</small><span class="perk-cost">${own?'Adquirido':cost+' ✧'}</span></div><button class="perk-buy" data-perk="${id}" ${own||!can?'disabled':''}>${own?'Activo':'Adquirir'}</button></div>`}).join('');
-  if(tab==='advisors')box.innerHTML=`<div class="advisor-grid">${Object.entries(ADVISORS).map(([id,a])=>{const seen=state.meta.discoveredAdvisors.includes(id);const r=relOf(id);const cls=seen?'':'locked';const mood=r>=18?'ally':r<=-18?'foe':'';const face=seen&&a.portrait?`<img class="advisor-face" src="${a.portrait}" alt="">`:'';return `<div class="advisor-cell ${cls} ${mood}">${face}<b>${seen?a.glyph+' '+a.name:'? Desconocido'}</b><small>${seen?a.title:'Todavía no llegó a tu corte.'}</small>${seen?`<span class="rel">Afinidad: ${r>0?'+':''}${r}${r>=18?' · aliado':r<=-18?' · enemigo':''}</span>`:''}</div>`}).join('')}</div>`;
+  if(tab==='advisors'){
+    ensureCourt();
+    const cells=Object.entries(ADVISORS).map(([id,a])=>{
+      const show=state.meta.discoveredAdvisors.includes(id);
+      if(!show)return `<div class="advisor-cell locked"><b>? Desconocido</b><small>Todavía no llegó a tu corte.</small></div>`;
+      const o=state.court[id];
+      const gone=!!(o&&o.gone)||(id==='odon'&&hasFlag('odon_gone')&&id!=='iva');
+      const name=gone?a.name:occupantName(id);
+      const title=gone?'Dejó el oficio':occupantTitle(id);
+      const r=relOf(id);
+      const cls=['advisor-cell',r>=18?'ally':r<=-18?'foe':'',gone?'gone':''].filter(Boolean).join(' ');
+      const face=a.portrait?`<img class="advisor-face" src="${a.portrait}" alt="">`:'';
+      const age=!gone&&o?` · ${Math.round(o.age)} años`:'';
+      const gen=!gone&&o&&(o.gen||1)>1?` · ${roman(o.gen)}`:'';
+      const kin=!gone&&o&&o.kin&&o.kin!=='fundador'?` · ${o.kin}`:'';
+      const line=(state.officeLog||[]).filter(x=>x.office===id).map(x=>`${escapeHtml(x.from.split(/\s+/)[0])} → ${escapeHtml(x.to.split(/\s+/)[0])}`).join(' · ');
+      return `<div class="${cls}">${face}<b>${a.glyph} ${escapeHtml(name)}</b><small>${escapeHtml(title)}${age}${gen}${kin}</small>${line?`<div class="office-line">${line}</div>`:''}<span class="rel">Afinidad: ${r>0?'+':''}${r}${r>=18?' · aliado':r<=-18?' · enemigo':''}</span></div>`;
+    }).join('');
+    box.innerHTML=`<p class="lead">La corona se hereda. Las sillas, también. Cada oficio tiene dueño, edad y memoria de cómo trataste al anterior.</p><div class="advisor-grid">${cells}</div>`;
+  }
   if(tab==='edicts'){
     const list=state.edicts.length?state.edicts.map(e=>`<div class="edict"><b>${escapeHtml(e.name)}</b><div>Año mundial ${e.year}</div></div>`).join(''):'<p class="lead">Todavía no hay edictos. Construí, firmá, casá.</p>';
     const flags=Object.entries(EDICT_LABELS).filter(([id])=>hasFlag(id)).map(([,n])=>n);

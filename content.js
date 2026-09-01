@@ -17,7 +17,7 @@ function C(id,advisor,text,left,right,opt={}){
 }
 function O(label,effects={},extra={}){return {label,effects,...extra}}
 
-const VERSION='2.5.1';
+const VERSION='2.6.0';
 const STAT_KEYS=['pueblo','tesoro','ejercito','saber'];
 const STAT_LABELS={pueblo:'Pueblo',tesoro:'Tesoro',ejercito:'Ejército',saber:'Saber'};
 const STAT_ICONS={pueblo:'♟',tesoro:'◆',ejercito:'⚔',saber:'✦'};
@@ -35,20 +35,22 @@ const SEASON_NAMES=['Primavera','Verano','Otoño','Invierno'];
 const SEASON_KEYS=['spring','summer','autumn','winter'];
 
 const ADVISORS={
-  ines:{name:'Inés de Aramonte',title:'Cancillera de la Corona',glyph:'♛',mood:'◈',sil:'ines',portrait:'img/advisor-ines.jpg'},
-  bruno:{name:'Bruno Varda',title:'Tesorero Real',glyph:'♜',mood:'◆',sil:'bruno',portrait:'img/advisor-bruno.jpg'},
-  tala:{name:'Tala',title:'Voz de los Barrios',glyph:'♟',mood:'❖',sil:'tala',portrait:'img/advisor-tala.jpg'},
-  roldan:{name:'Roldán Hierro',title:'Mariscal de Valdoria',glyph:'⚔',mood:'✣',sil:'roldan',portrait:'img/advisor-roldan.jpg'},
-  elian:{name:'Elián de los Nueve',title:'Archivero Mayor',glyph:'✦',mood:'⌘',sil:'elian',portrait:'img/advisor-elian.jpg'},
-  mara:{name:'Mara Velo',title:'Maestra de Espías',glyph:'◐',mood:'♠',sil:'mara',portrait:'img/advisor-mara.jpg'},
-  odon:{name:'Odón Grís',title:'Médico de la Corte',glyph:'⚕',mood:'✧',sil:'odon',portrait:'img/advisor-odon.jpg'},
-  soraya:{name:'Soraya del Estuario',title:'Almirante Mercante',glyph:'⚓',mood:'◇',sil:'soraya',portrait:'img/advisor-soraya.jpg'},
-  naia:{name:'Naia Brumal',title:'Astróloga Proscrita',glyph:'☽',mood:'✦',sil:'naia',portrait:'img/advisor-naia.jpg'},
-  garrik:{name:'Garrik del Umbral',title:'Embajador del Norte',glyph:'♞',mood:'❄',sil:'garrik',portrait:'img/advisor-garrik.jpg'},
-  lupo:{name:'Lupo',title:'Bufón y Oído del Palacio',glyph:'☼',mood:'♣',sil:'lupo',portrait:'img/advisor-lupo.jpg'},
-  ferran:{name:'Ferran Cobre',title:'Maestro de Gremios',glyph:'⚒',mood:'⬡',sil:'ferran',portrait:'img/advisor-ferran.jpg'},
-  iva:{name:'Iva Grís',title:'Médica de la Corte',glyph:'⚕',mood:'✧',sil:'iva'}
+  ines:{name:'Inés de Aramonte',title:'Cancillera de la Corona',titleM:'Canciller de la Corona',glyph:'♛',mood:'◈',sil:'ines',portrait:'img/advisor-ines.jpg',gender:'f',house:'de Aramonte',startAge:[46,56],retire:67},
+  bruno:{name:'Bruno Varda',title:'Tesorero Real',titleF:'Tesorera Real',glyph:'♜',mood:'◆',sil:'bruno',portrait:'img/advisor-bruno.jpg',gender:'m',house:'Varda',startAge:[44,54],retire:68},
+  tala:{name:'Tala',title:'Voz de los Barrios',glyph:'♟',mood:'❖',sil:'tala',portrait:'img/advisor-tala.jpg',gender:'f',house:'',nick:true,startAge:[32,42],retire:60},
+  roldan:{name:'Roldán Hierro',title:'Mariscal de Valdoria',titleF:'Mariscala de Valdoria',glyph:'⚔',mood:'✣',sil:'roldan',portrait:'img/advisor-roldan.jpg',gender:'m',house:'Hierro',startAge:[46,56],retire:66,land:'frontera'},
+  elian:{name:'Elián de los Nueve',title:'Archivero Mayor',titleF:'Archivera Mayor',glyph:'✦',mood:'⌘',sil:'elian',portrait:'img/advisor-elian.jpg',gender:'m',house:'de los Nueve',startAge:[50,60],retire:74},
+  mara:{name:'Mara Velo',title:'Maestra de Espías',titleM:'Maestro de Espías',glyph:'◐',mood:'♠',sil:'mara',portrait:'img/advisor-mara.jpg',gender:'f',house:'Velo',startAge:[38,48],retire:64},
+  odon:{name:'Odón Grís',title:'Médico de la Corte',titleF:'Médica de la Corte',glyph:'⚕',mood:'✧',sil:'odon',portrait:'img/advisor-odon.jpg',gender:'m',house:'Grís',startAge:[58,66],retire:76},
+  soraya:{name:'Soraya del Estuario',title:'Almirante Mercante',glyph:'⚓',mood:'◇',sil:'soraya',portrait:'img/advisor-soraya.jpg',gender:'f',house:'del Estuario',startAge:[40,50],retire:65,land:'puerto'},
+  naia:{name:'Naia Brumal',title:'Astróloga Proscrita',titleM:'Astrólogo Proscrito',glyph:'☽',mood:'✦',sil:'naia',portrait:'img/advisor-naia.jpg',gender:'f',house:'Brumal',startAge:[34,46],retire:70},
+  garrik:{name:'Garrik del Umbral',title:'Embajador del Norte',titleF:'Embajadora del Norte',glyph:'♞',mood:'❄',sil:'garrik',portrait:'img/advisor-garrik.jpg',gender:'m',house:'del Umbral',startAge:[42,52],retire:66},
+  lupo:{name:'Lupo',title:'Bufón y Oído del Palacio',titleF:'Bufona y Oído del Palacio',glyph:'☼',mood:'♣',sil:'lupo',portrait:'img/advisor-lupo.jpg',gender:'m',house:'',nick:true,startAge:[28,40],retire:58},
+  ferran:{name:'Ferran Cobre',title:'Maestro de Gremios',titleF:'Maestra de Gremios',glyph:'⚒',mood:'⬡',sil:'ferran',portrait:'img/advisor-ferran.jpg',gender:'m',house:'Cobre',startAge:[40,50],retire:67},
+  iva:{name:'Iva Grís',title:'Médica de la Corte',titleM:'Médico de la Corte',glyph:'⚕',mood:'✧',sil:'iva',gender:'f',house:'Grís',startAge:[34,44],retire:72}
 };
+const COURT_HOUSES=['de Salinas','del Puente','de las Campanas','Río Largo','de Piedra','Manso','del Archivo','de la Calzada'];
+const COURT_NICKS=['Pico','Mote','Grillo','Chispa','Nudo','Cebra','Tilo','Nira','Cata','Lila','Bram','Ona','Duna','Kira'];
 
 const REGION_DEFS=[
   {id:'capital',name:'Valdoria',hurt:s=>s.hidden.salud<30,mark:s=>s.flags.includes('hospital')?'Hospital':s.flags.includes('imprenta')?'Imprenta':''},
@@ -162,7 +164,9 @@ const ACHIEVEMENTS=[
   ['by-dagger','Oficio de cuchillo','Morí por una traición, no por los cuatro pilares.','♠',s=>(s.meta.lifetimeDeaths.betrayal||0)>=1],
   ['let-go','La corona se deja','Abdicá en el heredero.','♜',s=>(s.meta.lifetimeDeaths.abdicate||0)>=1],
   ['new-pulse','Otro pulso','Que Iva herede el oficio de Odón.','⚕',s=>s.flags.includes('iva_court')||s.meta.discoveredAdvisors.includes('iva')],
-  ['other-cradle','La otra cuna','Que vuelva quien no heredó.','♟',s=>s.flags.includes('kin_returned')||(s.meta.chronicles||[]).some(b=>(b.lineage||[]).some(r=>(r.fork||[]).length))]
+  ['other-cradle','La otra cuna','Que vuelva quien no heredó.','♟',s=>s.flags.includes('kin_returned')||(s.meta.chronicles||[]).some(b=>(b.lineage||[]).some(r=>(r.fork||[]).length))],
+  ['silla-dejada','La silla se deja','Que un oficio de la mesa cambie de manos.','♛',s=>(s.officeLog||[]).some(x=>x.office&&x.office!=='odon'&&x.why!=='archivo')],
+  ['tres-sillas','Tres sillas','Tres oficios distintos cambiaron de dueño.','♜',s=>new Set((s.officeLog||[]).filter(x=>x.why!=='archivo').map(x=>x.office)).size>=3]
 ];
 
 const PERKS=[
@@ -204,31 +208,53 @@ const EDICT_LABELS={
   kin_settled:'El feudo de la otra cuna',kin_spurned:'La otra cuna, sin tierra',heir_married:'La boda del heredero'
 };
 
+function courtSeat(state,id){
+  const o=state?.court?.[id];
+  if(o&&!o.gone&&o.name)return o;
+  return null;
+}
+function courtFirst(state,id){
+  const o=courtSeat(state,id);
+  if(o)return o.name.split(/\s+/)[0];
+  return (ADVISORS[id]?.name||'').split(/\s+/)[0]||'Alguien';
+}
+
 function whisperFor(state){
   const w=[];
-  if(state.hidden.corrupcion>60)w.push('Bruno cuenta monedas que no suenan a plata.');
-  if(state.hidden.salud<35)w.push(state.flags.includes('odon_gone')?'Iva mira el pozo como a un acusado.':'Odón tose y mira el pozo como a un acusado.');
-  if(state.hidden.inteligencia>70)w.push('Mara sonríe demasiado poco para lo que sabe.');
-  if(state.hidden.autoridad<30)w.push('Inés endereza papeles como quien endereza un reino.');
-  if(state.hidden.autoridad>75)w.push('Hasta Lupo baja la voz cuando pasás.');
+  const bruno=courtFirst(state,'bruno');
+  const mara=courtFirst(state,'mara');
+  const ines=courtFirst(state,'ines');
+  const lupo=courtFirst(state,'lupo');
+  const pulse=state.flags.includes('odon_gone')||state.flags.includes('iva_court')?courtFirst(state,'iva'):courtFirst(state,'odon');
+  if(state.hidden.corrupcion>60)w.push(`${bruno} cuenta monedas que no suenan a plata.`);
+  if(state.hidden.salud<35)w.push(`${pulse} mira el pozo como a un acusado.`);
+  if(state.hidden.inteligencia>70)w.push(`${mara} sonríe demasiado poco para lo que sabe.`);
+  if(state.hidden.autoridad<30)w.push(`${ines} endereza papeles como quien endereza un reino.`);
+  if(state.hidden.autoridad>75)w.push(`Hasta ${lupo} baja la voz cuando pasás.`);
   if(state.hidden.religion>70)w.push('Las campanas marcan el Consejo mejor que el reloj.');
   if(state.hidden.deuda>45)w.push('Hay pasos de acreedor en el patio aunque no se vean.');
   if((state.relationships.mara||0)<=-18)w.push('Hay un rumor que llega antes que la carta.');
   if((state.relationships.tala||0)>=18)w.push('En los barrios todavía dicen tu nombre sin escupir.');
   if(state.season===3)w.push('El invierno enseña los huesos del palacio.');
-  if(state.season===1&&state.hidden.reservas<4)w.push('El verano cuenta el grano con más rigor que Bruno.');
+  if(state.season===1&&state.hidden.reservas<4)w.push(`El verano cuenta el grano con más rigor que ${bruno}.`);
   if(state.flags.includes('plot_gold'))w.push('El copero limpia un cubierto que nadie usa.');
   if(state.flags.includes('plot_protocol'))w.push('Hay una rúbrica faltante y demasiada cortesía.');
-  if(state.flags.includes('plot_cipher'))w.push('Un papel sin sello espera en la mesa de Mara.');
+  if(state.flags.includes('plot_cipher'))w.push(`Un papel sin sello espera en la mesa de ${mara}.`);
   if(state.flags.includes('plot_named'))w.push('El nombre cabe en una palma. No en un salón.');
   if(state.flags.includes('plot_seeded')&&!state.flags.includes('plot_active'))w.push('En la cocina se habla bajo, y no de recetas.');
   if(state.persistent?.assassin)w.push('El que sirvió el vino de ayer todavía tiene las llaves.');
   if(state.flags.includes('regencia'))w.push('El sello lo firma otra mano. El niño mira.');
   else if(state.rulerAge>=65)w.push('El trono es más alto que el pulso.');
-  else if(state.rulerAge>=55)w.push('Inés habla de testamento como quien habla del tiempo: sin pedirlo.');
-  else if(state.rulerAge>=40)w.push(state.flags.includes('odon_gone')?'Iva cuenta las pausas entre una palabra y la siguiente.':'Odón cuenta las pausas entre una palabra y la siguiente.');
+  else if(state.rulerAge>=55)w.push(`${ines} habla de testamento como quien habla del tiempo: sin pedirlo.`);
+  else if(state.rulerAge>=40)w.push(`${pulse} cuenta las pausas entre una palabra y la siguiente.`);
   if(state.heir?.name)w.push(`En los pasillos ya dicen ${state.heir.name} como quien ensaya el futuro.`);
-  if(state.flags.includes('odon_gone'))w.push('La silla de Odón está corrida. Iva no la mueve.');
+  if(state.flags.includes('odon_gone')){
+    const iva=courtFirst(state,'iva');
+    const odon=(state.court?.odon?.name||ADVISORS.odon.name).split(/\s+/)[0];
+    w.push(`La silla de ${odon} está corrida. ${iva} no la mueve.`);
+  }
+  const hand=(state.officeLog||[]).at(-1);
+  if(hand&&state.worldYear-hand.year<=3)w.push(`En los pasillos todavía dicen ${hand.from.split(/\s+/)[0]} cuando miran la silla de ${hand.to.split(/\s+/)[0]}.`);
   if((state.persistent?.shadowKin||[])[0]?.name)w.push(`Hay quien todavía dice ${state.persistent.shadowKin[0].name} cuando habla de la cuna.`);
   return w;
 }
