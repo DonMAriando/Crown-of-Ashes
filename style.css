@@ -3,6 +3,9 @@
   --gold:#c6a45b;--house:#c6a45b;--muted:#8f899b;--line:#2c2a38;--danger:#b65454;
   --good:#6a9a79;--shadow:0 28px 70px rgba(0,0,0,.45);
   --season-tint:transparent;
+  --scroll-track:rgba(21,21,30,.55);
+  --scroll-thumb:color-mix(in srgb,var(--house) 45%, transparent);
+  --scroll-thumb-hover:color-mix(in srgb,var(--house) 70%, transparent);
 }
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:#0b0b11;color:#f3efe7;font-family:Fraunces,"Iowan Old Style","Palatino Linotype",Georgia,serif}
@@ -232,6 +235,26 @@ body.hall-dim .hall-veil{opacity:.2}
 .help-body ul{padding-left:18px}
 .help-body kbd{border:1px solid var(--line);padding:1px 6px;border-radius:6px;color:#eee;font-size:11px}
 .chronicle-list,.codex-content{padding:18px 22px 28px;overflow:auto;max-height:65vh;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+
+/* Scrollbars integradas con la paleta del juego.
+   Funciona en Firefox con `scrollbar-color` y en WebKit con `::-webkit-scrollbar*`. */
+html,body{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) var(--scroll-track)}
+html::-webkit-scrollbar,body::-webkit-scrollbar{width:10px;height:10px}
+html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{background:var(--scroll-track);border-radius:999px}
+html::-webkit-scrollbar-thumb,body::-webkit-scrollbar-thumb{
+  background:var(--scroll-thumb);
+  border:3px solid var(--scroll-track);
+  border-radius:999px;
+}
+html::-webkit-scrollbar-thumb:hover,body::-webkit-scrollbar-thumb:hover{background:var(--scroll-thumb-hover)}
+.chronicle-list::-webkit-scrollbar,.codex-content::-webkit-scrollbar{width:10px;height:10px}
+.chronicle-list::-webkit-scrollbar-track,.codex-content::-webkit-scrollbar-track{background:transparent}
+.chronicle-list::-webkit-scrollbar-thumb,.codex-content::-webkit-scrollbar-thumb{
+  background:var(--scroll-thumb);
+  border:2px solid rgba(18,18,26,.55);
+  border-radius:999px;
+}
+.chronicle-list::-webkit-scrollbar-thumb:hover,.codex-content::-webkit-scrollbar-thumb:hover{background:var(--scroll-thumb-hover)}
 .chronicle-item{display:grid;grid-template-columns:72px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid #25242e}
 .chronicle-item time{font-size:10px;color:var(--house)}
 .chronicle-item p{margin:0;font-family:Georgia,serif;font-size:14px;line-height:1.45}
