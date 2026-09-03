@@ -338,6 +338,11 @@ body.reduce-motion .region.flash,body.reduce-motion .realm-map.is-beat .realm-ma
 .chronicle-book b{display:block;color:var(--house);margin-bottom:4px}
 .chronicle-book small{display:block;color:#8f899b;font-size:11px;margin-bottom:8px}
 .chronicle-book div{color:#d2c8b4;font-size:12px;line-height:1.45}
+.memory-book{font-family:Fraunces,Georgia,serif;color:#d8d0c4;line-height:1.7;max-width:40rem;padding:6px 2px 18px}
+.memory-book .who{font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--house);margin:0 0 16px}
+.memory-book h3{font-size:16px;font-weight:650;color:#f3efe7;margin:26px 0 10px}
+.memory-book p{margin:0 0 14px;font-size:15px}
+.memory-book .open{font-style:italic;color:#b9b0a2}
 
 @keyframes toastin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes pulse{50%{box-shadow:0 0 0 3px rgba(182,84,84,.12)}}

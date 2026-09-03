@@ -2,7 +2,7 @@
 
 Juego original de estrategia narrativa en español (vos rioplatense). Gobernás Valdoria a través de generaciones: cada decisión deja una cicatriz; cada muerte, una herencia.
 
-Versión de contenido **2.6.0**. Repositorio: [DonMAriando/Crown-of-Ashes](https://github.com/DonMAriando/Crown-of-Ashes).
+Versión de contenido **2.7.0**. Repositorio: [DonMAriando/Crown-of-Ashes](https://github.com/DonMAriando/Crown-of-Ashes).
 
 ## Cómo jugar
 
@@ -37,7 +37,7 @@ El botón ♪ corta solo las camas. Los toques al deslizar, sellar o consultar s
 - El reino se hereda: obras, edictos, facciones y vecinos no vuelven a 50/50.
 - Edad que se siente: el mazo cambia a los 40, 55 y 65; Odón anuncia la muerte natural en una carta. El heredero, si tiene nombre, deja de ser «el niño». Si es menor de dieciséis, hay regencia que discute el sello.
 - Odón puede ceder el oficio: Iva Grís toma el pulso. Se puede abdicar de verdad. Quien no heredó puede volver ~a los 18.
-- Códice con **Linaje**, **Crónicas** selladas (al fundar otra casa o cerrar el libro), mapa generado por la semilla, anales del reinado actual, legado con leyes de casa. En la mesa hay un mapita vivo; tocarlo abre el Códice en **Mapa**. El sello empieza chico, crece con los años y los arcos, y puede perder tierras. Si cae la última, el reinado termina: al heredero lo coronan señor de la tierra donde estaba.
+- Códice con **Linaje**, **Historia** en prosa (lo que fue Valdoria y lo que es tu casa, como memorando del archivero), **Crónicas** selladas (al fundar otra casa o cerrar el libro), mapa generado por la semilla, anales del reinado actual, legado con leyes de casa. En la mesa hay un mapita vivo; tocarlo abre el Códice en **Mapa**. El sello empieza chico, crece con los años y los arcos, y puede perder tierras. Si cae la última, el reinado termina: al heredero lo coronan señor de la tierra donde estaba.
 - Intro obligatoria: Software Society presenta, después el título y el icono pintado. No se saltea.
 - El salón cambia de ropa con la estación y los agüeros (velo sobre el mismo `hall.jpg`).
 - Los oficios de la mesa se heredan: cada consejero envejece, puede dejar la silla, y el sucesor recuerda cómo trataste al anterior. Si se pierde el puerto, la almirante llega sin mar. El Códice, pestaña Consejeros, guarda esa fila.
@@ -78,7 +78,7 @@ Guardado: `corona-de-ceniza-save-v2` y `corona-de-ceniza-meta-v2`. La preferenci
 - Los retratos y las escenas son arte generado para esta corte, no pinturas licenciadas. El hueco de la carta es una franja ancha (cara y hombros), no el óleo entero.
 - Las camas son pistas Opus en `musica/` (Suno). Si el navegador no reproduce Opus, busca el mismo nombre en MP3. Los toques de las cartas siguen en Web Audio. El botón ♪ corta solo las camas.
 - Chrome (y otros) no sueltan el audio hasta el primer clic. Fundar, continuar o tocar ♪ basta.
-- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.36` al momento de escribir esto).
+- Si una recarga deja el JavaScript viejo, `Ctrl+F5`. El service worker usa un nombre de caché (`corona-de-ceniza-v2.37` al momento de escribir esto).
 
 Al publicar un cambio de interfaz o de motor: bump de `style.css?v=` / `audio.js?v=` / `fx.js?v=` / `game.js?v=` en **los dos** HTML, bump de `CACHE` en `sw.js`, y una fila nueva arriba de la bitácora.
 

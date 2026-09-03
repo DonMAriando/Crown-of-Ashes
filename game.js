@@ -1771,6 +1771,9 @@ function exportBook(){
       return `- ${r.name}, reinado ${roman(r.reign)}, ${r.years} años (${r.startAge}–${r.endAge}). ${r.cause}. Hereda ${r.heirName}, ${r.kin}, ${r.heirAge} años. ${ev}.${fork?' No tomaron la corona: '+fork+'.':''}`;
     }):['- Todavía una sola corona.']),
     '',
+    '## Historia del reino',
+    memoryBookText(),
+    '',
     '## Oficios',
     ...((state.officeLog||[]).length?(state.officeLog||[]).map(x=>`- Año ${x.year}: ${x.from} → ${x.to}. ${x.kin||''} · ${x.why||'retiro'}.`):['- Todavía las sillas fundadoras.']),
     '',
@@ -1897,6 +1900,110 @@ function openCodex(tab){
   renderCodex(tab||'lineage');
   $('#codexDialog').showModal();
 }
+function chroniclerName(){
+  ensureCourt();
+  const o=occupant('elian');
+  if(o&&!o.gone&&o.name)return o.name;
+  return ADVISORS.elian.name;
+}
+function memoirDeathLine(r){
+  const d=r.death, high=!!r.deathHigh;
+  if(d==='age')return 'No fue daga. Fue el invierno, por dentro. El pulso se fue y la corona, un rato, no supo dónde posarse.';
+  if(d==='abdicate')return 'Dejó el oficio sobre la mesa, alineado con el tintero. El ceremonial fingió que siempre había sido así.';
+  if(d==='realm')return 'El último estandarte se cayó. Quedó un nombre en el papel y ninguna plaza que lo cobrara.';
+  if(d==='betrayal')return 'Los cuatro pilares seguían en pie. El oficio, no. Hay copas que llegan antes que la guardia.';
+  const pairs={
+    pueblo:['La lealtad se acabó antes que el pan. La plaza no pidió permiso.','Lo amaron hasta volverlo innecesario. Una asamblea es un funeral que aplaude.'],
+    tesoro:['La Corona quebró. Los acreedores compraron jueces y, al final, la silla.','El oro se concentró tanto en palacio que el tesoro tuvo más voluntad que el soberano.'],
+    ejercito:['Los cuarteles estaban vacíos cuando sonaron las campanas.','Los generales descubrieron que tenían más hombres. La coronación del mariscal fue breve.'],
+    saber:['Los archivos ardieron y el reino olvidó por qué debía obedecer.','Los sabios concluyeron que la monarquía era una hipótesis. Te reemplazaron por un cálculo.']
+  };
+  const p=pairs[d];
+  if(p)return high?p[1]:p[0];
+  return r.cause||'El reinado se cerró y el papel no supo el motivo.';
+}
+function ancientMemoryChapters(){
+  const g=new RNG((state.seed||'0')+':memoria');
+  const n=g.int(4,6);
+  const names=shuffleIn(g,AGE_MEMORY.names.slice());
+  const fates=shuffleIn(g,AGE_MEMORY.fates.slice());
+  const chapters=[];
+  for(let i=0;i<n;i++)chapters.push({name:names[i],years:g.int(5,34),fate:fates[i]});
+  return chapters;
+}
+function memoryLostLands(){
+  const realm=ensureRealm();
+  return ((realm&&realm.layout)||[]).filter(n=>n.kind==='land'&&regionOwner(n.id)==='lost').map(n=>regionName(n.id));
+}
+function memoryBookParagraphs(){
+  const who=chroniclerName();
+  const house=state.dynasty||'de Valdoria';
+  const founder=(state.house?.founder||'').trim();
+  const motto=state.house?.motto||'';
+  const paras=[];
+  paras.push({k:'open',t:`Yo, ${who}, que llevo el archivo y no la corona, dejo este memorando a quien todavía firma. No es un censo. Es lo que el papel se negó a olvidar.`});
+  paras.push({k:'h',t:'Lo que fue'});
+  paras.push({k:'p',t:`Valdoria es más vieja que ${house}. Antes de nuestro color hubo reyes que el mapa recuerda y la plaza, no. Los nombro porque el silencio también es una mentira.`});
+  ancientMemoryChapters().forEach(k=>{
+    paras.push({k:'p',t:`${k.name} sostuvo el sello ${k.years} años, más o menos: el archivo discute las cifras y coincide en el sabor. ${k.fate}`});
+  });
+  paras.push({k:'h',t:'Lo que es'});
+  const start=founder?`${founder} fundó ${house}`:`${house} empezó cuando ${state.ruler.split(' ')[0]} aceptó el sello`;
+  paras.push({k:'p',t:`${start}${motto?`, bajo el lema «${motto}»`:''}. Llevamos ${state.worldYear} años de esta tinta.`});
+  const past=state.lineage||[];
+  if(!past.length){
+    paras.push({k:'p',t:`${state.ruler} todavía no tiene capítulo cerrado. Vi el primer invierno, el primer peaje, la primera duda. El resto se está escribiendo con las manos sucias.`});
+  }else{
+    past.forEach(r=>{
+      const ev=(r.events||[]).map(e=>e.label).filter(Boolean);
+      const evLine=ev.length?` En esos años el reino nombró: ${ev.join(', ').replace(/, ([^,]*)$/,' y $1')}.`:' El archivo no le colgó un detonante; a veces la historia es solo durar.';
+      const heir=r.heirName?` Dejó el oficio a ${r.heirName}, ${r.kin}, ${r.heirAge} años.`:' El sucesor llegó sin nombre en el margen.';
+      const fork=(r.fork||[]).map(f=>f.name).filter(Boolean);
+      const forkLine=fork.length?` No tomaron la corona, y el palacio finge que no los ve: ${fork.join(', ')}.`:'';
+      paras.push({k:'p',t:`${r.name} reinó ${r.years} años (${r.startAge}–${r.endAge}). ${memoirDeathLine(r)}${evLine}${heir}${forkLine}`});
+    });
+    paras.push({k:'p',t:`Hoy sostiene el sello ${state.ruler}, año ${state.reignYear} de su reinado, ${Math.round(state.rulerAge)} años encima. Este capítulo no cierra. Yo solo adelanto la tinta.`});
+  }
+  const works=(state.edicts||[]).slice(-8);
+  if(works.length){
+    paras.push({k:'h',t:'Lo que quedó escrito'});
+    paras.push({k:'p',t:`Obras y perdones que el sucesor no podrá fingir que no existieron: ${works.map(e=>e.name).join('; ')}.`});
+  }
+  const lost=memoryLostLands();
+  const ours=oursLands().map(n=>regionName(n.id));
+  if(lost.length||ours.length){
+    paras.push({k:'h',t:'El sello'});
+    let land=`La corona sostiene ${ours.length?ours.join(', '):'casi nada'}.`;
+    if(lost.length)land+=` Se perdió, y duele nombrarlo: ${lost.join(', ')}.`;
+    paras.push({k:'p',t:land});
+  }
+  const chairs=(state.officeLog||[]).filter(x=>x.why!=='archivo');
+  if(chairs.length){
+    paras.push({k:'p',t:`Las sillas también tienen linaje. ${chairs.slice(-5).map(x=>`${x.from.split(/\s+/)[0]} dejó el oficio a ${x.to} (año ${x.year})`).join('. ')}.`});
+  }
+  const books=(state.meta.chronicles||[]).filter(b=>b.dynasty!==state.dynasty);
+  if(books.length){
+    paras.push({k:'p',t:`Otras casas durmieron en estas mismas piedras. El Códice guarda sus nombres como quien guarda un diente: ${books.map(b=>b.dynasty).join(', ')}.`});
+  }
+  const clem=state.personality?.clemencia||0,raz=state.personality?.razon||0;
+  if(Math.abs(clem)>6||Math.abs(raz)>6){
+    const tone=clem>8?'en las plazas todavía se perdona con tu nombre':clem<-8?'en las plazas se respira mejor cuando no pasás':raz>8?'el archivo te recuenta como alguien que midió de más y amó de menos':'el carácter de esta corona todavía no tiene apodo';
+    paras.push({k:'p',t:`De ${state.ruler.split(' ')[0]} diré esto, mientras pueda: ${tone}.`});
+  }
+  paras.push({k:'open',t:'Si este papel te sobrevive, leélo en voz baja. La historia de Valdoria no es un himno. Es una cuenta.'});
+  return paras;
+}
+function memoryBookHTML(){
+  const inner=memoryBookParagraphs().map(p=>{
+    if(p.k==='h')return `<h3>${escapeHtml(p.t)}</h3>`;
+    if(p.k==='open')return `<p class="open">${escapeHtml(p.t)}</p>`;
+    return `<p>${escapeHtml(p.t)}</p>`;
+  }).join('');
+  return `<div class="memory-book"><p class="who">Memorando de ${escapeHtml(chroniclerName())}</p>${inner}</div>`;
+}
+function memoryBookText(){
+  return memoryBookParagraphs().map(p=>p.k==='h'?'## '+p.t:p.t).join('\n\n');
+}
 function lineageNodeHTML(r,living){
   const ev=(r.events||[]).map(e=>`<span>${escapeHtml(e.label)}</span>`).join('')||(living?'<span>el reinado aún se escribe</span>':'<span>sin detonante nombrado</span>');
   const pass=living?'':`<div class="lineage-pass">→ ${escapeHtml(r.heirName||'un pariente')}, ${escapeHtml(r.kin||'pariente')}, ${r.heirAge} años</div>`;
@@ -1910,7 +2017,10 @@ function renderCodex(tab='lineage'){
     const past=state.lineage||[];
     const living={name:state.ruler,reign:state.reign,years:state.reignYear,startAge:Math.round(state.lineageStartAge||state.rulerAge),events:state.reignMarks||[],regency:!!state.regent};
     const empty=past.length?'':'<p class="lead">Todavía una sola corona. El siglo se escribe al morir.</p>';
-    box.innerHTML=`<p class="lead">La fila de coronas. Los Anales guardan el año; esto, el siglo.</p>${empty}<div class="lineage">${past.map(r=>lineageNodeHTML(r,false)).join('')}${lineageNodeHTML(living,true)}</div>`;
+    box.innerHTML=`<p class="lead">La fila de coronas. Los Anales guardan el año; la <b>Historia</b>, el siglo en prosa.</p>${empty}<div class="lineage">${past.map(r=>lineageNodeHTML(r,false)).join('')}${lineageNodeHTML(living,true)}</div>`;
+  }
+  if(tab==='historia'){
+    box.innerHTML=`<p class="lead">No es el diario de esta corona. Es el libro que un archivero le escribiría a un rey: lo que fue Valdoria, y lo que es tu casa.</p>${memoryBookHTML()}`;
   }
   if(tab==='achievements')box.innerHTML=ACHIEVEMENTS.map(([id,t,d,i])=>`<div class="achievement ${state.meta.achievements.includes(id)?'unlocked':''}"><div class="badge">${state.meta.achievements.includes(id)?i:'?'}</div><div><b>${state.meta.achievements.includes(id)?t:'Logro oculto'}</b><small>${state.meta.achievements.includes(id)?d:'Seguí gobernando para descubrirlo.'}</small></div></div>`).join('');
   if(tab==='legacy')box.innerHTML=PERKS.map(([id,t,d,cost,icon])=>{const own=state.meta.perks?.includes(id),can=state.meta.legacy>=cost;return `<div class="achievement ${own?'unlocked':''}"><div class="badge">${icon}</div><div><b>${t}</b><small>${d}</small><span class="perk-cost">${own?'Adquirido':cost+' ✧'}</span></div><button class="perk-buy" data-perk="${id}" ${own||!can?'disabled':''}>${own?'Activo':'Adquirir'}</button></div>`}).join('');

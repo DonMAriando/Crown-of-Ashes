@@ -17,7 +17,7 @@ function C(id,advisor,text,left,right,opt={}){
 }
 function O(label,effects={},extra={}){return {label,effects,...extra}}
 
-const VERSION='2.6.0';
+const VERSION='2.7.0';
 const STAT_KEYS=['pueblo','tesoro','ejercito','saber'];
 const STAT_LABELS={pueblo:'Pueblo',tesoro:'Tesoro',ejercito:'Ejército',saber:'Saber'};
 const STAT_ICONS={pueblo:'♟',tesoro:'◆',ejercito:'⚔',saber:'✦'};
@@ -205,7 +205,23 @@ const EDICT_LABELS={
   mutiny_charter:'La carta de la Guardia',boda_real:'La boda de Estado',casado:'El matrimonio real',
   pan_fijo:'El precio del pan',canales_abiertos:'Los canales del jardín',cementerio_civil:'El cementerio civil',
   plot_foiled:'La copa retirada',odon_gone:'El retiro de Odón',iva_court:'Iva Grís en la corte',
-  kin_settled:'El feudo de la otra cuna',kin_spurned:'La otra cuna, sin tierra',heir_married:'La boda del heredero'
+  kin_settled:'El feudo de la otra cuna',kin_spurned:'La otra cuna, sin tierra',  heir_married:'La boda del heredero'
+};
+
+const AGE_MEMORY={
+  names:['Aurel el del Vado','Lis de las Marismas','Ordoño Sin Mapa','Vela del Estuario','Gascón el Breve','Mira de Piedra','Telo el que Contó','Sibila de la Calzada','Nuno Ciego','Ira la del Horno','Salvador de la Niebla','Yema del Norte'],
+  fates:[
+    'Murió de una fiebre que todavía no tenía nombre. El archivo le puso después «vidrio», por el brillo de los ojos.',
+    'Perdió una tierra alta y no volvió a decir su nombre en voz alta. El mapa, sí: lo dejó manchado.',
+    'Reinó poco y bien, que es una ofensa para quienes reinan mucho y mal.',
+    'Firmó una paz que duró un invierno y una guerra que duró una vida. El pergamino no sabe cuál preferir.',
+    'Se casó con el río. El río no envió dote. El estuario, sí: inundación.',
+    'Nombró bufón a un consejero y consejero a un bufón. El reino se rió hasta que dejó de ser chiste.',
+    'Quiso medir las estrellas y midió, sin querer, el miedo. Apagaron el observatorio con las manos.',
+    'Perdonó una deuda y el tesoro nunca se lo perdonó. Hay monedas que recuerdan mejor que las viudas.',
+    'Abdicó sobre una mesa. El heredero tardó tres días en sentarse: decía que la silla todavía estaba caliente.',
+    'Lo mató una copa. Los pilares, dicen, seguían en pie. Eso consuela a quien no bebió.'
+  ]
 };
 
 function courtSeat(state,id){
