@@ -88,7 +88,7 @@ Qué se subió a `main`, cuándo y con qué commit. Lo más nuevo va arriba. Los
 
 | Fecha | Commit | Cómo llegó | Qué se puede hacer desde entonces |
 |---|---|---|---|
-| 18 sep 2026 | — | Push a `main` | El juego corre en GitHub Pages: [donmariando.github.io/Crown-of-Ashes](https://donmariando.github.io/Crown-of-Ashes/). |
+| 18 sep 2026 | [`7ffd769`](https://github.com/DonMAriando/Crown-of-Ashes/commit/7ffd769) | Push a `main` | El juego corre en GitHub Pages: [donmariando.github.io/Crown-of-Ashes](https://donmariando.github.io/Crown-of-Ashes/). |
 | 3 sep 2026 | [`f7f192c`](https://github.com/DonMAriando/Crown-of-Ashes/commit/f7f192c) | Push a `main` | El Códice gana **Historia**: un memorando del archivero. Lo que fue Valdoria (reyes anteriores a tu color, distintos en cada semilla) y lo que es tu casa (muertes, herederos, obras, tierras perdidas, sillas). No es el diario de este año. Contenido 2.7.0. |
 | 1 sep 2026 | [`5fd0468`](https://github.com/DonMAriando/Crown-of-Ashes/commit/5fd0468) | Push a `main` | Los retratos de la corte vuelven a verse. El tinte de las generaciones nuevas ya no deja el hueco en negro. |
 | 1 sep 2026 | [`0f27244`](https://github.com/DonMAriando/Crown-of-Ashes/commit/0f27244) | Push a `main` | Las sillas de la mesa se heredan. Cada oficio envejece, puede dejar la silla, y el sucesor recuerda cómo trataste al anterior. Si se pierde el puerto, la almirante llega sin mar. Códice, pestaña Consejeros. Contenido 2.6.0. |
